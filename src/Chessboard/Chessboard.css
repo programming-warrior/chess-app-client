@@ -1,0 +1,10 @@
+
+.board{
+    width:400px;
+    height: 400px;
+    background-color: slateblue;
+    display: flex;
+    flex-wrap: wrap;
+    border:1px solid black;
+}
+

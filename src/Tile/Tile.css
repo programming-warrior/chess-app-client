@@ -1,0 +1,25 @@
+.tile{
+    box-sizing: border-box;
+    flex-shrink: 0;
+    width: calc(100%/8);
+    height: calc(100%/8);
+    display:flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.w{
+    background-color: white;
+}
+.b{
+    background-color:gray;
+}
+
+.clicked {
+    border:0.25rem solid #ffe48c;
+    background-color: #ffeaa7 !important;
+}
+
+.check{
+    background-color: rgb(213, 46, 46)!important;
+}

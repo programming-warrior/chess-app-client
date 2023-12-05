@@ -22,12 +22,16 @@ interface Prop{
 
 function Piece({piece}:Prop){
 
-    const {draggingPiece,pos}=useContext(moveContext);
+    const {draggingPiece,pos,width}=useContext(moveContext);
 
     const style={
         backgroundImage:`url(${piece.img})`,
         top:pos?.y,
         left:pos?.x,
+        width:`${width/8}px`,
+        height:`${width/8}px`,
+        minWidth:`${350/8}px`,
+        minHeight:`${350/8}px`,
     }
     const datatypeValue=piece.name+'-'+piece.col;
 

@@ -3,21 +3,22 @@
     flex-shrink: 0;
     width: calc(100%/8);
     height: calc(100%/8);
+    min-width:calc(350px/8);
+    min-height: calc(350px/8);
     display:flex;
     justify-content: center;
     align-items: center;
 }
 
 .w{
-    background-color: white;
+    background-color: #ebecd0a7;
 }
 .b{
-    background-color:gray;
+    background-color:#779556;
 }
 
 .clicked {
-    border:0.25rem solid #ffe48c;
-    background-color: #ffeaa7 !important;
+    background-color: #ebc33c !important;
 }
 
 .check{

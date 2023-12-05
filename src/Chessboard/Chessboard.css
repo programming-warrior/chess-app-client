@@ -1,10 +1,10 @@
 
-.board{
-    width:400px;
-    height: 400px;
-    background-color: slateblue;
+.board-w, .board-b{
+    aspect-ratio: 1;
+    min-width: 350px;
+    min-height: 350px;
     display: flex;
     flex-wrap: wrap;
-    border:1px solid black;
 }
+
 

@@ -12,7 +12,6 @@ interface TileProps {
 }
 
 
-
 function Tile({id,col,piece}:TileProps){
 
     const {draggingPiece,check}=useContext(moveContext);

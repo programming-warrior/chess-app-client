@@ -716,19 +716,26 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
 
       //addition condition for king movement
       if (type === 'k') {
+        if(check.kingPos && check.attackingPiece){
+          //temporarily removing the attacked king from the board
+          piecePos[check.kingPos]='';
+        }
         for (let i = 0; i < moves.length; i++) {
           if (isProtected(moves[i], piece.split('-')[1] === 'w' ? 'b' : 'w')) {
             moves[i] = '';
           }
+        }
+        if(check.kingPos && check.kingCol){
+          //adding back the king to the board
+          piecePos[check.kingPos]=`k-${check.kingCol}`
         }
       }
 
 
       //find legal moves during check 
       if (check.kingPos) {
-        let moves2: string[] = kingBetweenMove();
-
         if (type !== 'k') {
+          let moves2: string[] = kingBetweenMove();
           for (let i = 0; i < moves.length; i++) {
             let valid = false;
             for (let j = 0; j < moves2.length; j++) {

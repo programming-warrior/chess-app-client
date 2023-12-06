@@ -24,3 +24,21 @@
 .check{
     background-color: rgb(213, 46, 46)!important;
 }
+
+
+.highlighted{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.highlighted::after{
+    content: '';
+    position: absolute;
+    width:30%;
+    height: 30%;
+    background-color: black;
+    opacity: 0.3;
+    border-radius: 50%;
+}

@@ -14,10 +14,13 @@ interface TileProps {
 
 function Tile({id,col,piece}:TileProps){
 
-    const {draggingPiece,check}=useContext(moveContext);
+    const {draggingPiece,check,highlightedTiles,clickedPiece}=useContext(moveContext);
 
     const checkClass=`${check?.kingPos}`===id?'check':'';
-    const classValue=`tile ${col} ${draggingPiece?.parentElement?.dataset.id===id?'clicked':'' } ${checkClass}`;
+    let classValue=`tile ${col} ${draggingPiece?.parentElement?.dataset.id===id || clickedPiece?.parentElement?.dataset.id===id?'clicked':'' } ${checkClass}`;
+    if(highlightedTiles && highlightedTiles.indexOf(id)>-1){
+        classValue+='highlighted';
+    }
 
     if(piece!=null){
         return(

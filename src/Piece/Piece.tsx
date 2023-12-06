@@ -35,7 +35,7 @@ function Piece({piece}:Prop){
     }
     const datatypeValue=piece.name+'-'+piece.col;
 
-    const classValue=`piece ${draggingPiece?.dataset.pos===piece.pos?'dragging':''}`;
+    const classValue=`piece ${draggingPiece?.dataset.pos===piece.pos?'dragging':''} `;
 
     return (
         <div className={classValue} data-pos={piece.pos} data-type={datatypeValue} style={style} ></div>

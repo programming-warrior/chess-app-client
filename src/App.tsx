@@ -8,7 +8,7 @@ function App() {
     col:string,
     turn:number,
   }
-  const [connected,setConnection]=useState(true);
+  const [connected,setConnection]=useState(false);
   const [gameStart,setGameStart]=useState(false);
   const[ws,setWS]=useState<WebSocket|null>(null);
   const [playerData,setPlayerData]=useState<playerData|null>();
@@ -18,7 +18,6 @@ function App() {
   useEffect(()=>{
     //make connection with the server
      const socket=new WebSocket("ws://localhost:7000");
-
     socket.addEventListener('open',()=>{
       setConnection(true);
       setWS(socket);
@@ -49,7 +48,7 @@ function App() {
     }
 
   },[])
- 
+  
   if(connected && ws && boardPos && playerData){
       return (
         <div className="App" >

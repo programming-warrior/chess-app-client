@@ -84,19 +84,24 @@ interface checkDetails {
 
 interface MoveContextType {
   draggingPiece: HTMLElement | null;
+  clickedPiece: HTMLElement | null;
   pos: Position | null;
   check: checkDetails | null;
-  width:number;
+  width: number;
+  highlightedTiles: String[] | null;
 }
+
 
 const pieceMoveAudio = new Audio("assets/sounds/piece_move.wav");
 
 
 export const moveContext = createContext<MoveContextType>({
   draggingPiece: null,
+  clickedPiece: null,
   pos: null,
   check: null,
-  width:window.innerWidth/3,
+  width: window.innerWidth / 3,
+  highlightedTiles: null,
 });
 
 
@@ -119,9 +124,11 @@ interface chessBoardProp {
 function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
 
   const player = playerData.col;
-  const[width,setWidth]=useState(window.innerWidth/3);
+  const [width, setWidth] = useState(window.innerWidth / 3);
   const [piecePos, setPiecePos] = useState({ ...boardPos });
   const [draggingPiece, setDraggingPiece] = useState<HTMLElement | null>(null);
+  const [clickedPiece, setClickedPiece] = useState<HTMLElement | null>(null);
+  const [highlightedTiles, setHighlightTiles] = useState<String[] | null>(null);
   const [turn, setTurn] = useState<number>(playerData.turn);
   const [pos, setPos] = useState({
     x: 0,
@@ -134,10 +141,7 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
     attackingPiece: [],
   });
 
-  // const [canShortCastle,setCanShortCastle]=useState<string[]>(['w','b']);
-  // const [canLongCastle,setCanLongCastle]=useState<string[]>(['w','b']);
-  let canShortCastle = ['w', 'b'];
-  let canLongCastle = ['w', 'b'];
+
 
   const [gameOver, setGameOver] = useState<Boolean>(false);
 
@@ -145,28 +149,26 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
 
   useEffect(() => {
 
-    window.addEventListener('resize',()=>{
-      setWidth(window.innerWidth/3);
+    window.addEventListener('resize', () => {
+      setWidth(window.innerWidth / 3);
     })
 
     ws.addEventListener('message', (data) => {
       const { event, message } = JSON.parse(data.data);
       if (event === 'move-validated') {
-        console.log(data);
         const { boardPos, check, currentPlayer } = message;
-        console.log(boardPos);
         setPiecePos({ ...boardPos });
         setCheck({ ...check });
-        if(currentPlayer!=player){
+        if (currentPlayer != player) {
           pieceMoveAudio.play();
         }
         setTurn(() => {
           return currentPlayer === player ? 1 : 0;
         })
+        setClickedPiece(null);
+        setHighlightTiles(null);
       }
-      else if (event === 'illegal-move') {
 
-      }
     })
 
     return (() => {
@@ -180,7 +182,7 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
 
   let file = "abcdefgh".split("");
   let rank = "12345678".split("");
-  const tiles:JSX.Element[] = [];
+  const tiles: JSX.Element[] = [];
   let col;
 
 
@@ -188,46 +190,34 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
   file = player === 'b' ? file.reverse() : file;
   rank = player === 'b' ? rank.reverse() : rank;
 
- 
 
-  
 
-    for (let i = rank.length - 1; i >= 0; i--) {
-      col = i % 2 === 0.0 ? 'b' : 'w';
-      for (let j = 0; j < file.length; j++) {
-        let piece = null;
-        for (let pos in piecePos) {
-          if (pos === file[j] + rank[i] && piecePos[pos]) {
-            piece = new PieceClass(
-              file[j] + rank[i],
-              "assets/images/" + piecePos[pos] + ".png",
-              piecePos[pos].split("-")[1],
-              piecePos[pos].split("-")[0]
-              );
-            }
-          }
-          tiles.push(<Tile id={file[j] + rank[i]} col={col} piece={piece} />);
-          col = col === "w" ? "b" : "w";
+
+
+  for (let i = rank.length - 1; i >= 0; i--) {
+    col = i % 2 === 0.0 ? 'b' : 'w';
+    for (let j = 0; j < file.length; j++) {
+      let piece = null;
+      for (let pos in piecePos) {
+        if (pos === file[j] + rank[i] && piecePos[pos]) {
+          piece = new PieceClass(
+            file[j] + rank[i],
+            "assets/images/" + piecePos[pos] + ".png",
+            piecePos[pos].split("-")[1],
+            piecePos[pos].split("-")[0]
+          );
         }
       }
-      
-      
- 
-  useEffect(() => {
-    checkMateDetection(player);
-  }, [check, turn])
-
-
-  function handleMouseDown(e: react.MouseEvent) {
-    const target = e.target as HTMLElement;
-    if (!draggingPiece && target.classList.contains("piece") && !gameOver) {
-      setDraggingPiece(target);
-      setPos({
-        x: e.clientX,
-        y: e.clientY,
-      });
+      tiles.push(<Tile id={file[j] + rank[i]} col={col} piece={piece} />);
+      col = col === "w" ? "b" : "w";
     }
   }
+
+
+
+
+
+
 
   //all possible moves of each pieces
   function getPawnMoves(start: string, piece: string) {
@@ -295,7 +285,7 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
       moves.push(temp);
       temp = String.fromCharCode(temp.split('')[0].charCodeAt(0) - 1) + (parseInt(temp.split('')[1]) + 1).toString();
     }
-    if (Object.hasOwn(piecePos, temp)) {
+    if (Object.hasOwn(piecePos, temp) && piecePos[temp].split('-')[1] !== piece.split('-')[1]) {
       moves.push(temp);
     }
 
@@ -306,7 +296,7 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
       temp = String.fromCharCode(temp.split('')[0].charCodeAt(0) + 1) + (parseInt(temp.split('')[1]) + 1).toString();
     }
 
-    if (Object.hasOwn(piecePos, temp)) {
+    if (Object.hasOwn(piecePos, temp) && piecePos[temp].split('-')[1] !== piece.split('-')[1]) {
       moves.push(temp);
     }
 
@@ -317,7 +307,7 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
       temp = String.fromCharCode(temp.split('')[0].charCodeAt(0) - 1) + (parseInt(temp.split('')[1]) - 1).toString();
     }
 
-    if (Object.hasOwn(piecePos, temp)) {
+    if (Object.hasOwn(piecePos, temp) && piecePos[temp].split('-')[1] !== piece.split('-')[1]) {
       moves.push(temp);
     }
 
@@ -328,7 +318,7 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
       temp = String.fromCharCode(temp.split('')[0].charCodeAt(0) + 1) + (parseInt(temp.split('')[1]) - 1).toString();
     }
 
-    if (Object.hasOwn(piecePos, temp)) {
+    if (Object.hasOwn(piecePos, temp) && piecePos[temp].split('-')[1] !== piece.split('-')[1]) {
       moves.push(temp);
     }
     return moves;
@@ -398,7 +388,7 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
       moves.push(temp);
       temp = temp.split('')[0] + (parseInt(temp.split('')[1]) + 1).toString();
     }
-    if (Object.hasOwn(piecePos, temp)) {
+    if (Object.hasOwn(piecePos, temp) && piecePos[temp].split('-')[1] !== piece.split('-')[1]) {
       moves.push(temp);
     }
 
@@ -408,7 +398,7 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
       moves.push(temp);
       temp = temp.split('')[0] + (parseInt(temp.split('')[1]) - 1).toString();
     }
-    if (Object.hasOwn(piecePos, temp)) {
+    if (Object.hasOwn(piecePos, temp) && piecePos[temp].split('-')[1] !== piece.split('-')[1]) {
       moves.push(temp);
     }
 
@@ -418,7 +408,7 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
       moves.push(temp);
       temp = String.fromCharCode(temp.split('')[0].charCodeAt(0) - 1) + temp.split('')[1];
     }
-    if (Object.hasOwn(piecePos, temp)) {
+    if (Object.hasOwn(piecePos, temp) && piecePos[temp].split('-')[1] !== piece.split('-')[1]) {
       moves.push(temp);
     }
 
@@ -428,7 +418,7 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
       moves.push(temp);
       temp = String.fromCharCode(temp.split('')[0].charCodeAt(0) + 1) + temp.split('')[1];
     }
-    if (Object.hasOwn(piecePos, temp)) {
+    if (Object.hasOwn(piecePos, temp) && piecePos[temp].split('-')[1] !== piece.split('-')[1]) {
       moves.push(temp);
     }
 
@@ -557,435 +547,10 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
 
 
 
-  function pawnCheckDetect(start: string, end: string, piece: string) {
-
-    const col = piece.split("-")[1];
-    const type = piece.split("-")[0];
-    let kingCol = "";
-    let kingPos = "";
-    let attackingPos: string[] = [];
-    let attackingPiece: string[] = [];
-
-    if (!check.kingPos && piece.split('-')[1] === player) {
-      const rankIncr = col === "w" ? 1 : -1;
-      const controlledSquare1 =
-        String.fromCharCode(end.split("")[0].charCodeAt(0) + 1) + (parseInt(end.split("")[1]) + rankIncr).toString();
-      const controlledSquare2 = String.fromCharCode(end.split("")[0].charCodeAt(0) - 1) + (parseInt(end.split("")[1]) + rankIncr).toString();
-
-      if (piecePos[controlledSquare1] === `k-${col === "w" ? "b" : "w"}`) {
-        kingPos = controlledSquare1;
-        kingCol = col === "w" ? "b" : "w"
-        attackingPos.push(end);
-        attackingPiece.push(piece);
-      }
-      else if (piecePos[controlledSquare2] === `k-${col === "w" ? "b" : "w"}`) {
-        kingPos = controlledSquare2;
-        kingCol = col === "w" ? "b" : "w"
-        attackingPos.push(end);
-        attackingPiece.push(piece);
-      }
-
-      //now check for any dobule check caused by the rook, bishop, and the queen.
-      let moves: string[] = [];
-      let bishopEnd = '';
-      let rookEnd = '';
-      let queenEnd = '';
-      for (let key in boardPos) {
-        if (boardPos[key] === `b-${col}`) {
-          bishopEnd = key;
-          moves = getBishopMoves(bishopEnd, piece);
-          for (let i = 0; i < moves.length; i++) {
-            if (piecePos[moves[i]] !== '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] !== piece.split('-')[1]) {
-              attackingPos.push(bishopEnd);;
-              attackingPiece.push(`b-${col}`);
-              kingPos = moves[i];
-              kingCol = col === "w" ? "b" : "w";
-              break;
-            }
-          }
-        }
-        else if (boardPos[key] === `r-${col}`) {
-          rookEnd = key;
-          moves = getRookMoves(rookEnd, piece);
-          for (let i = 0; i < moves.length; i++) {
-            if (piecePos[moves[i]] != '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] !== piece.split('-')[1]) {
-              attackingPos.push(rookEnd);;
-              attackingPiece.push(`r-${col}`);
-              kingPos = moves[i];
-              kingCol = col === "w" ? "b" : "w";
-              break;
-            }
-          }
-        }
-        else if (boardPos[key] === `q-${col}`) {
-          queenEnd = key;
-          moves = getQueenMoves(queenEnd, piece);
-          for (let i = 0; i < moves.length; i++) {
-            if (piecePos[moves[i]] !== '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] !== piece.split('-')[1]) {
-              attackingPos.push(queenEnd);;
-              attackingPiece.push(`q-${col}`);
-              kingPos = moves[i];
-              kingCol = col === "w" ? "b" : "w";
-              break;
-            }
-          }
-        }
-      }
-      setCheck({
-        kingCol,
-        kingPos,
-        attackingPiece,
-        attackingPos,
-      });
-
-    }
-    else {
-      kingCol = "";
-      kingPos = "";
-      setCheck({
-        kingCol,
-        kingPos,
-        attackingPos,
-        attackingPiece,
-      })
-    }
-  }
-
-
-  function rookCheckDetect(start: string, end: string, piece: string) {
-    const col = piece.split("-")[1];
-    const type = piece.split("-")[0];
-    let kingCol = "";
-    let kingPos = "";
-    let attackingPos: string[] = [];
-    let attackingPiece: string[] = [];
-    if (!check.kingPos) {
-      let moves = getRookMoves(end, piece);
-      for (let i = 0; i < moves.length; i++) {
-        if (piecePos[moves[i]] != '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] !== piece.split('-')[1]) {
-          kingPos = moves[i];
-          kingCol = col === "w" ? "b" : "w"
-          attackingPos.push(end);
-          attackingPiece.push(piece);
-
-          break;
-        }
-      }
-      //now check for any dobule check caused by the rook, bishop, and the queen.
-      let bishopEnd = '';
-      let queenEnd = '';
-      for (let key in boardPos) {
-        if (boardPos[key] === `b-${col}`) {
-          bishopEnd = key;
-          moves = getBishopMoves(bishopEnd, piece);
-          //check for the discover check by the bishop
-          for (let i = 0; i < moves.length; i++) {
-            if (piecePos[moves[i]] !== '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] === check.kingCol) {
-              kingPos = moves[i];
-              kingCol = col === "w" ? "b" : "w"
-              attackingPos.push(bishopEnd);
-              attackingPiece.push(`b-${col}`);
-
-              break;
-            }
-          }
-        }
-
-        else if (boardPos[key] === `q-${col}`) {
-          queenEnd = key;
-          moves = getQueenMoves(queenEnd, piece);
-          //check for the check
-          for (let i = 0; i < moves.length; i++) {
-            if (piecePos[moves[i]] !== '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] === kingCol) {
-              kingPos = moves[i];
-              kingCol = col === "w" ? "b" : "w"
-              attackingPos.push(queenEnd);
-              attackingPiece.push(`q-${col}`);
-              break;
-            }
-          }
-        }
-      }
-      setCheck({
-        kingCol,
-        kingPos,
-        attackingPos,
-        attackingPiece,
-      })
-    }
-
-    else {
-      kingCol = "";
-      kingPos = "";
-
-      setCheck({
-        kingCol,
-        kingPos,
-        attackingPos,
-        attackingPiece,
-      })
-    }
-  }
-
-  function bishopCheckDetect(start: string, end: string, piece: string) {
-    const col = piece.split("-")[1];
-    const type = piece.split("-")[0];
-
-    let kingCol = "";
-    let kingPos = "";
-    let attackingPos: string[] = [];
-    let attackingPiece: string[] = [];
-
-    if (!check.kingPos) {
-      let moves = getBishopMoves(end, piece);
-      //check for the check
-      for (let i = 0; i < moves.length; i++) {
-        if (piecePos[moves[i]] !== '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] !== piece.split('-')[1]) {
-          kingPos = moves[i];
-          kingCol = col === "w" ? "b" : "w"
-          attackingPos.push(end);
-          attackingPiece.push(piece);
-
-          break;
-        }
-      }
-
-      //now check for any dobule check caused by the rook, bishop, and the queen.
-      let rookEnd = '';
-      let queenEnd = '';
-      for (let key in boardPos) {
-
-        if (boardPos[key] === `r-${col}`) {
-          rookEnd = key;
-          moves = getRookMoves(rookEnd, piece);
-          for (let i = 0; i < moves.length; i++) {
-            if (piecePos[moves[i]] != '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] !== piece.split('-')[1]) {
-              kingPos = moves[i];
-              kingCol = col === "w" ? "b" : "w"
-              attackingPos.push(rookEnd);;
-              attackingPiece.push(`r-${col}`);
-
-              break;
-            }
-          }
-        }
-        else if (boardPos[key] === `q-${col}`) {
-          queenEnd = key;
-          moves = getQueenMoves(queenEnd, piece);
-          //check for the check
-          for (let i = 0; i < moves.length; i++) {
-            if (piecePos[moves[i]] !== '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] !== piece.split('-')[1]) {
-              kingPos = moves[i];
-              kingCol = col === "w" ? "b" : "w"
-              attackingPos.push(queenEnd);;
-              attackingPiece.push(`q-${col}`);
-
-
-              break;
-            }
-          }
-        }
-      }
-      setCheck({
-        kingCol,
-        kingPos,
-        attackingPos,
-        attackingPiece,
-      })
-    }
-
-    else {
-      kingCol = "";
-      kingPos = "";
-
-      setCheck({
-        kingCol,
-        kingPos,
-        attackingPos,
-        attackingPiece,
-      })
-    }
-  }
-
-
-  function queenCheckDetect(start: string, end: string, piece: string) {
-    const col = piece.split("-")[1];
-    const type = piece.split("-")[0];
-    let kingCol = col === "w" ? "b" : "w";
-    let kingPos = "";
-    let attackingPos = [];
-    let attackingPiece = [];
-
-    attackingPos.push(end);
-    attackingPiece.push(piece);
 
 
 
-    if (!check.kingPos) {
-      const moves = getQueenMoves(end, piece);
-      for (let i = 0; i < moves.length; i++) {
-        if (piecePos[moves[i]] !== '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] !== piece.split('-')[1]) {
-          kingPos = moves[i];
-          setCheck({
-            kingCol,
-            kingPos,
-            attackingPos,
-            attackingPiece,
-          });
 
-          break;
-        }
-      }
-    }
-
-    else {
-      kingCol = "";
-      kingPos = "";
-
-      setCheck({
-        kingCol,
-        kingPos,
-        attackingPos,
-        attackingPiece,
-      })
-    }
-  }
-
-  function knightCheckDetect(start: string, end: string, piece: string) {
-    const col = piece.split("-")[1];
-    const type = piece.split("-")[0];
-    let kingCol = "";
-    let kingPos = "";
-    let attackingPos: string[] = [];
-    let attackingPiece: string[] = [];
-
-
-
-    if (!check.kingPos) {
-      let moves = getKnightMoves(end, piece);
-      for (let i = 0; i < moves.length; i++) {
-        if (piecePos[moves[i]] !== '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] !== piece.split('-')[1]) {
-          kingPos = moves[i];
-          kingCol = col === "w" ? "b" : "w";
-          attackingPos.push(end);
-          attackingPiece.push(piece);
-          break;
-        }
-      }
-
-      let bishopEnd = '';
-      let rookEnd = '';
-      let queenEnd = '';
-      for (let key in boardPos) {
-        if (boardPos[key] === `b-${col}`) {
-          bishopEnd = key;
-          moves = getBishopMoves(bishopEnd, piece);
-          //check for the discover check by the bishop
-          for (let i = 0; i < moves.length; i++) {
-            if (piecePos[moves[i]] !== '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] !== piece.split('-')[1]) {
-
-              attackingPos.push(bishopEnd);
-              attackingPiece.push(`b-${col}`);
-              kingPos = moves[i];
-              kingCol = col === "w" ? "b" : "w";
-
-              break;
-            }
-          }
-        }
-        else if (boardPos[key] === `r-${col}`) {
-          rookEnd = key;
-          moves = getRookMoves(rookEnd, piece);
-          for (let i = 0; i < moves.length; i++) {
-            if (piecePos[moves[i]] != '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] !== piece.split('-')[1]) {
-              attackingPiece.push(`r-${col}`);
-              attackingPos.push(rookEnd);
-              kingPos = moves[i];
-              kingCol = col === "w" ? "b" : "w";
-              break;
-            }
-          }
-        }
-        else if (boardPos[key] === `q-${col}`) {
-          queenEnd = key;
-          moves = getQueenMoves(queenEnd, piece);
-          //check for the check
-          for (let i = 0; i < moves.length; i++) {
-            if (piecePos[moves[i]] !== '' && piecePos[moves[i]].split('-')[0] === 'k' && piecePos[moves[i]].split('-')[1] !== piece.split('-')[1]) {
-              attackingPiece.push(`q-${col}`);
-              attackingPos.push(queenEnd);
-              kingPos = moves[i];
-              kingCol = col === "w" ? "b" : "w";
-              break;
-            }
-          }
-        }
-      }
-      setCheck({
-        kingCol,
-        kingPos,
-        attackingPiece,
-        attackingPos
-      })
-
-
-    }
-    else {
-      kingCol = "";
-      kingPos = "";
-
-      setCheck({
-        kingCol,
-        kingPos,
-        attackingPos,
-        attackingPiece,
-      })
-    }
-  }
-
-
-  function checkDetection(start: string, end: string, piece: string) {
-
-    const type = piece.split("-")[0];
-
-    if (type === "p") {
-      pawnCheckDetect(start, end, piece);
-
-
-    }
-    else if (type === "b") {
-      bishopCheckDetect(start, end, piece);
-    }
-    else if (type === "r") {
-      rookCheckDetect(start, end, piece);
-    }
-
-    else if (type === "kn") {
-      knightCheckDetect(start, end, piece);
-    }
-    else if (type === "q") {
-      queenCheckDetect(start, end, piece);
-    }
-
-    //if there is no check and the attacked king has moved then remove the check
-    else if (type === 'k') {
-      if (check.kingPos && check.kingCol) {
-        let kingCol = "";
-        let kingPos = "";
-        let attackingPiece: string[] = [];
-        let attackingPos: string[] = [];
-
-
-        setCheck({
-          kingCol,
-          kingPos,
-          attackingPos,
-          attackingPiece,
-        })
-      }
-    }
-
-  }
 
 
   function kingBetweenMove() {
@@ -1100,267 +665,9 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
   }
 
 
-  function checkMateDetection(pieceCol: string) {
-    if (check.kingPos) {
-      //opposite color king
-      const col = pieceCol;
-      //check if the opponent has legal moves or not
-
-      //check for all the pieces first if they can block the attack or not
-      for (let key in piecePos) {
-        let moves: string[] = [];
-        const type = piecePos[key].split('-')[0];
-        if (piecePos[key].split('-')[1] === col) {
-          switch (type) {
-            case "p": {
-              moves = getPawnMoves(key, piecePos[key]);
-              break;
-            }
-            case "kn": {
-              moves = getKnightMoves(key, piecePos[key]);
-              break;
-            }
-
-            case "q": {
-              moves = getQueenMoves(key, piecePos[key]);
-              break;
-            }
-            case "b": {
-              moves = getBishopMoves(key, piecePos[key]);
-              break;
-            }
-            case "r": {
-              moves = getRookMoves(key, piecePos[key]);
-              break;
-            }
-            case 'k': {
-              moves = getkingMoves(key, piecePos[key]);
-            }
-          }
-          let moves2: string[] = kingBetweenMove();
-
-          //any other piece other than the king, which can block the check can only move.
-          if (type !== 'k') {
-            for (let i = 0; i < moves.length; i++) {
-              if (moves2.indexOf(moves[i]) > -1) {
-                return;
-              }
-            }
-          }
-          if (type === 'k') {
-            for (let i = 0; i < moves.length; i++) {
-              if (!isProtected(moves[i], col === 'w' ? 'b' : 'w')) {
-                return;
-              }
-            }
-          }
-        }
-      }
-      setGameOver(true);
-      console.log('checkmate');
-    }
-
-  }
-
-  function castle(kingSqr1: string, kingSqr2: string, rookSqr1: string, rookSqr2: string, col: string) {
-    boardPos[kingSqr2] = boardPos[kingSqr1];
-    boardPos[rookSqr2] = boardPos[rookSqr1];
-    boardPos[kingSqr1] = '';
-    boardPos[rookSqr1] = '';
-    setPiecePos(boardPos);
-
-    checkDetection('', rookSqr2, `r-${col}`);
-
-    // setCanShortCastle(()=>{
-    //   return canShortCastle.filter((e)=>{
-    //     return e!==col;
-    //   })
-    // })
-
-    // setCanLongCastle(()=>{
-    //   return canLongCastle.filter((e)=>{
-    //     return e!==col;
-    //   })
-    // })
-
-    canLongCastle = canLongCastle.filter((e) => {
-      return e !== col;
-    })
-
-    canShortCastle = canShortCastle.filter((e) => {
-      return e !== col;
-    })
-
-    setTurn(() => {
-      return turn === 1 ? 0 : 1;
-    })
-
-  }
-
-  //BUG[PENDING]
-  function checkCastling(moves: string[], end: string, piece: string) {
-
-    let col = piece.split('-')[1];
-    if (col === 'w' && (piecePos['h1'] === `r-${col}` || piecePos['a1'] === `r-${col}`) && piecePos['e1'] === `k-${col}`) {
-      if (end === 'g1' && canShortCastle.indexOf(col) > -1) {
-        if (moves.indexOf('f1') > -1 && !isProtected('g1', 'b')) {
-          castle('e1', 'g1', 'h1', 'f1', col);
-        }
-      }
-      else if (end === 'c1' && canLongCastle.indexOf(col) > -1) {
-        if (moves.indexOf('d1') > -1 && !isProtected('c1', 'b')) {
-          castle('e1', 'c1', 'a1', 'd1', col);
-        }
-      }
-    }
-    else if (col === 'b' && (piecePos['h8'] === `r-${col}` || piecePos['a8'] === `r-${col}`) && piecePos['e8'] === `k-${col}`) {
-      if (end === 'g8' && canShortCastle.indexOf(col) > -1) {
-        if (moves.indexOf('f8') > -1 && !isProtected('g8', 'w')) {
-          castle('e8', 'g8', 'h8', 'f8', col);
-        }
-      }
-      else if (end === 'c8' && canLongCastle.indexOf(col) > -1) {
-        if (moves.indexOf('d8') > -1 && !isProtected('c8', 'w')) {
-          //king will move from e8 to c8 and the rook will move from a8 to d8
-          castle('e8', 'c8', 'a8', 'd8', col);
-        }
-      }
-    }
-
-  }
 
 
-  function checkforPin(start: string, piece: string, kingSqr: string) {
-
-    const col = piece.split('-')[1];
-
-
-    for (let key in piecePos) {
-      if (piecePos[key].split('-')[1] !== col) {
-        const moves: string[] = [];
-        let othCond = true;
-        if (piecePos[key].split('-')[0] === 'q') {
-
-          let rankDiff = parseInt(kingSqr.split('')[1]) - parseInt(key.split('')[1]);
-          let fileDiff = kingSqr.split('')[0].charCodeAt(0) - key.split('')[0].charCodeAt(0);
-
-          //move like the bishop
-          if (rankDiff === fileDiff || rankDiff === fileDiff * -1) {
-            let rankIncr = (parseInt(kingSqr.split('')[1]) - parseInt(key.split('')[1])) > 0 ? 1 : -1;
-            let fileIncr = kingSqr.split('')[0].charCodeAt(0) - key.split('')[0].charCodeAt(0) > 0 ? 1 : -1;
-
-            let temp = key;
-
-            while (temp !== kingSqr && Object.hasOwn(piecePos, temp)) {
-              let file = String.fromCharCode(temp.split('')[0].charCodeAt(0) + fileIncr);
-              let rank = (parseInt(temp.split('')[1]) + rankIncr).toString();
-              let sqr = file + rank;
-              temp = sqr;
-              if (temp !== start && temp !== kingSqr && piecePos[temp] != '') {
-                othCond = false;
-              }
-              moves.push(temp);
-            }
-          }
-          //move like the rook
-          else {
-
-            let rankDiff = parseInt(kingSqr.split('')[1]) - parseInt(key.split('')[1]);
-            let fileDiff = kingSqr.split('')[0].charCodeAt(0) - key.split('')[0].charCodeAt(0);
-
-            if (rankDiff === 0) {
-              let fileIncr = kingSqr.split('')[0].charCodeAt(0) - key.split('')[0].charCodeAt(0) > 0 ? 1 : -1;
-              let temp = key;
-              while (temp !== kingSqr && Object.hasOwn(piecePos, temp)) {
-                let file = String.fromCharCode(temp.split('')[0].charCodeAt(0) + fileIncr);
-                let rank = temp.split('')[1];
-                let sqr = file + rank;
-                temp = sqr;
-                if (temp !== start && temp !== kingSqr && piecePos[temp] != '') {
-                  othCond = false;
-                }
-                moves.push(temp);
-              }
-            }
-            else if (fileDiff === 0) {
-              let rankIncr = (parseInt(kingSqr.split('')[1]) - parseInt(key.split('')[1])) > 0 ? 1 : -1;
-              let temp = key;
-              while (temp !== kingSqr && Object.hasOwn(piecePos, temp)) {
-                let file = temp.split('')[0];
-                let rank = (parseInt(temp.split('')[1]) + rankIncr).toString();
-                let sqr = file + rank;
-                temp = sqr;
-                if (temp !== start && temp !== kingSqr && piecePos[temp] != '') {
-                  othCond = false;
-                }
-                moves.push(temp);
-              }
-            }
-          }
-        }
-        else if (piecePos[key].split('-')[0] === 'b') {
-          let rankIncr = (parseInt(kingSqr.split('')[1]) - parseInt(key.split('')[1])) > 0 ? 1 : -1;
-          let fileIncr = kingSqr.split('')[0].charCodeAt(0) - key.split('')[0].charCodeAt(0) > 0 ? 1 : -1;
-
-          let temp = key;
-          while (temp !== kingSqr && Object.hasOwn(piecePos, temp)) {
-            let file = String.fromCharCode(temp.split('')[0].charCodeAt(0) + fileIncr);
-            let rank = (parseInt(temp.split('')[1]) + rankIncr).toString();
-            let sqr = file + rank;
-            temp = sqr;
-            if (temp !== start && temp !== kingSqr && piecePos[temp] != '') {
-              othCond = false;
-            }
-            moves.push(temp);
-          }
-        }
-        else if (piecePos[key].split('-')[0] === 'r') {
-
-          let rankDiff = parseInt(kingSqr.split('')[1]) - parseInt(key.split('')[1]);
-          let fileDiff = kingSqr.split('')[0].charCodeAt(0) - key.split('')[0].charCodeAt(0);
-
-          if (rankDiff === 0) {
-            let fileIncr = kingSqr.split('')[0].charCodeAt(0) - key.split('')[0].charCodeAt(0) > 0 ? 1 : -1;
-            let temp = start;
-            while (temp !== kingSqr && Object.hasOwn(piecePos, temp)) {
-              let file = String.fromCharCode(temp.split('')[0].charCodeAt(0) + fileIncr);
-              let rank = temp.split('')[1];
-              let sqr = file + rank;
-              temp = sqr;
-              if (temp !== start && temp !== kingSqr && piecePos[temp] != '') {
-                othCond = false;
-              }
-              moves.push(temp);
-            }
-          }
-          else if (fileDiff === 0) {
-            let rankIncr = (parseInt(kingSqr.split('')[1]) - parseInt(key.split('')[1])) > 0 ? 1 : -1;
-            let temp = key;
-            while (temp !== kingSqr && Object.hasOwn(piecePos, temp)) {
-              let file = temp.split('')[0];
-              let rank = (parseInt(temp.split('')[1]) + rankIncr).toString();
-              let sqr = file + rank;
-              temp = sqr;
-              if (temp !== start && temp !== kingSqr && piecePos[temp] != '') {
-                othCond = false;
-              }
-              moves.push(temp);
-            }
-          }
-        }
-
-
-        if (moves.indexOf(start) > -1 && othCond) {
-          return true;
-        }
-
-      }
-    }
-    return false;
-  }
-
-  function validateMove(start: string, end: string, piece: string) {
-    let isPinned = false;
+  function showMoves(start: string, piece: string) {
     if (piece.split('-')[1] === player) {
       const type = piece.split("-")[0];
       if (type !== 'k' && check.kingPos && check.attackingPiece && check.attackingPiece.length > 1) {
@@ -1405,9 +712,6 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
 
 
         }
-        if (kingSqr) {
-          isPinned = checkforPin(start, piece, kingSqr);
-        }
       }
 
       //addition condition for king movement
@@ -1420,16 +724,9 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
       }
 
 
-      //check for castling
-      if (type == 'k' && !check.kingPos) {
-        checkCastling(moves, end, piece);
-      }
-
-
       //find legal moves during check 
       if (check.kingPos) {
         let moves2: string[] = kingBetweenMove();
-
 
         if (type !== 'k') {
           for (let i = 0; i < moves.length; i++) {
@@ -1447,175 +744,186 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
 
       }
 
-      //after all the above condition, if this condition prevails true then the piece can legally move
-      if (moves.indexOf(end) > -1 && piecePos[end].split('-')[1] !== piece.split('-')[1] && !isPinned) {
-        if (type === 'k') {
-   
-          canLongCastle = canLongCastle.filter((e) => {
-            return e !== piece.split('-')[1];
-          })
+      setHighlightTiles(moves);
 
-          canShortCastle = canShortCastle.filter((e) => {
-            return e !== piece.split('-')[1];
-          })
-        }
-        if (type === 'r') {
-          //rook has successfully moved so set castle for that color king to false
-          if (start === 'h1' || start === 'h8') {
-            // setCanShortCastle(()=>{
-            //   return canShortCastle.filter((e)=>{
-            //     return e!==piece.split('-')[1];
-            //   })
-            // })
-            canShortCastle = canShortCastle.filter((e) => {
-              return e !== piece.split('-')[1];
-            })
-          }
-          else if (start === 'a1' || start === 'a8') {
-            // setCanLongCastle(()=>{
-            //   return canLongCastle.filter((e)=>{
-            //     return e!==piece.split('-')[1];
-            //   })
-            // })
-            canLongCastle = canLongCastle.filter((e) => {
-              return e !== piece.split('-')[1];
-            })
-          }
-        }
-
-        //check for queening
-        if (type === 'p') {
-          if ((piece.split('-')[1] === 'w' && parseInt(end.split('')[1]) === 8) || (piece.split('-')[1] === 'b' && parseInt(end.split('')[1]) === 1)) {
-
-          }
-
-        }
-
-        boardPos[end] = boardPos[start];
-        boardPos[start] = '';
-        setPiecePos(boardPos);
-        checkDetection(start, end, piece);
-
-        setTurn(() => {
-          return turn === 1 ? 0 : 1;
-        })
-      }
     }
-    else {
-      console.log('you cannot move other players piece');
-    }
+
   }
 
-  function handleMouseUp(e: react.MouseEvent){
-    if (draggingPiece && chessBoard.current && !gameOver) {
-      console.log(draggingPiece);
-      const offsetX = chessBoard.current.offsetLeft;
-      const offsetY = chessBoard.current.offsetTop;
-      const squareWidth = draggingPiece.clientWidth;
-      const squareHeight = draggingPiece.clientHeight;
 
-      let targetX = e.clientX;
-      let targetY = e.clientY;
-      if (offsetX > 0) {
-        targetX -= offsetX;
-      }
-      if (offsetY > 0) {
-        targetY -= offsetY;
-      }
-      targetX = Math.floor(targetX / squareWidth);
-      targetY = Math.floor(targetY / squareHeight);
-
-
-      if (player == 'b') {
-        targetX = 7 - targetX;
-        targetY = 7 - targetY;
-      }
-      console.log(squareWidth + " " + squareHeight);
-
-
-      const squareId = String.fromCharCode(targetX + 97) + (8 - targetY);
-
-      if (draggingPiece.dataset.pos && draggingPiece.dataset.type) {
-        if (draggingPiece.dataset.pos !== squareId) {
-
-
-          //send the piece-move event to the server for validation
-          const data = {
-            event: "piece-move",
-            message: {
-              startingPosition: draggingPiece.dataset.pos,
-              movedPosition: squareId,
-              piece: draggingPiece.dataset.type,
-            }
-          }
-
-          console.log(squareId);
-          //send the move to the server for validation
-          ws.send(JSON.stringify(data));
-
-
-
-          //validate if the piece can go at the position moved by the player
-          // validateMove(
-          //   //old position of the piece which the player moved
-          //   draggingPiece.dataset.pos,
-          //   //position at which player placed the piece
-          //   squareId,
-          //   //piece information (col+type)
-          //   draggingPiece.dataset.type
-          // );
+  function handleMouseDown(e: react.PointerEvent) {
+    const target = e.target as HTMLElement;
+    if (e.pointerType === 'mouse') {
+      if (!draggingPiece && target.classList.contains("piece") && !gameOver) {
+        setDraggingPiece(target);
+        if (target.dataset.pos && target.dataset.type) {
+          showMoves(target.dataset.pos, target.dataset.type);
         }
-      }
-
-      setDraggingPiece(null);
-    }
-  }
-
-  function handleMouseMove(e: React.MouseEvent) {
-    if (draggingPiece && !gameOver && chessBoard.current) {
-      const offsetX = chessBoard.current.offsetLeft;
-      const offsetY = chessBoard.current.offsetTop;
-      const chessBoardWidth = chessBoard.current.clientWidth;
-      const chessBoardHeight = chessBoard.current.clientHeight;
-  
-      const mouseX = e.clientX - offsetX;
-      const mouseY = e.clientY - offsetY;
-  
-      if (
-        mouseX < 0 ||
-        mouseX > chessBoardWidth ||
-        mouseY < 0 ||
-        mouseY > chessBoardHeight
-      ) {
-        // If the mouse is outside the chessboard bounds, reset the piece and position
-        setPos({ x: 0, y: 0 });
-        
-        const mouseUpEvent = new MouseEvent('mouseup', {
-          bubbles: true,
-          cancelable: true,
+        setPos({
+          x: e.clientX,
+          y: e.clientY,
         });
-        chessBoard.current.dispatchEvent(mouseUpEvent);
-        setDraggingPiece(null);
-     
-      } else {
-        setPos({ x: e.clientX, y: e.clientY });
+      }
+    }
+    else if (e.pointerType === 'touch') {
+      if (target.classList.contains('piece') && !gameOver){
+
+        if(target!==clickedPiece && target.dataset.type && player===target.dataset.type.split('-')[1]){
+          setClickedPiece(target);
+          if (target.dataset.pos && target.dataset.type) {
+            showMoves(target.dataset.pos, target.dataset.type);
+          }
+        }
+        else if(clickedPiece && target.dataset.type && target.dataset.type.split('-')[1]!==player ){
+       
+              const squareId = target.dataset.id;
+              //send the piece-move event to the server for validation
+              const data = {
+                event: "piece-move",
+                message: {
+                  startingPosition: clickedPiece.dataset.pos,
+                  movedPosition: squareId,
+                  piece: clickedPiece.dataset.type,
+                }
+              }
+      
+              //send the move to the server for validation
+              ws.send(JSON.stringify(data));
+        }
+      }
+      else if (clickedPiece && target.classList.contains('tile') && !gameOver) {
+    
+            const squareId = target.dataset.id;
+            //send the piece-move event to the server for validation
+            const data = {
+              event: "piece-move",
+              message: {
+                startingPosition: clickedPiece.dataset.pos,
+                movedPosition: squareId,
+                piece: clickedPiece.dataset.type,
+              }
+            }
+    
+            //send the move to the server for validation
+            ws.send(JSON.stringify(data));
+      }
+      else{
+        setClickedPiece(null);
+        setHighlightTiles(null);
       }
     }
   }
-  
+
+  function handleMouseUp(e: react.PointerEvent) {
+    if (e.pointerType === 'mouse') {
 
 
+      if (draggingPiece && chessBoard.current && !gameOver) {
+
+        const offsetX = chessBoard.current.offsetLeft;
+        const offsetY = chessBoard.current.offsetTop;
+        const squareWidth = draggingPiece.clientWidth;
+        const squareHeight = draggingPiece.clientHeight;
+
+        let targetX = e.clientX;
+        let targetY = e.clientY;
+        if (offsetX > 0) {
+          targetX -= offsetX;
+        }
+        if (offsetY > 0) {
+          targetY -= offsetY;
+        }
+        targetX = Math.floor(targetX / squareWidth);
+        targetY = Math.floor(targetY / squareHeight);
+
+
+        if (player == 'b') {
+          targetX = 7 - targetX;
+          targetY = 7 - targetY;
+        }
+
+
+        const squareId = String.fromCharCode(targetX + 97) + (8 - targetY);
+
+        if (draggingPiece.dataset.pos && draggingPiece.dataset.type) {
+          if (draggingPiece.dataset.pos !== squareId) {
+
+
+            //send the piece-move event to the server for validation
+            const data = {
+              event: "piece-move",
+              message: {
+                startingPosition: draggingPiece.dataset.pos,
+                movedPosition: squareId,
+                piece: draggingPiece.dataset.type,
+              }
+            }
+
+
+            //send the move to the server for validation
+            ws.send(JSON.stringify(data));
+
+          }
+        }
+
+        setDraggingPiece(null);
+        setHighlightTiles(null);
+
+      }
+    }
+  }
+
+  function handleMouseMove(e: React.PointerEvent) {
+    if (e.pointerType === 'mouse') {
+      if (draggingPiece && !gameOver && chessBoard.current) {
+        const offsetX = chessBoard.current.offsetLeft;
+        const offsetY = chessBoard.current.offsetTop;
+        const chessBoardWidth = chessBoard.current.clientWidth;
+        const chessBoardHeight = chessBoard.current.clientHeight;
+
+        const mouseX = e.clientX - offsetX;
+        const mouseY = e.clientY - offsetY;
+
+        if (
+          mouseX < 0 ||
+          mouseX > chessBoardWidth ||
+          mouseY < 0 ||
+          mouseY > chessBoardHeight
+        ) {
+          // If the mouse is outside the chessboard bounds, reset the piece and position
+          setPos({ x: 0, y: 0 });
+
+          const mouseUpEvent = new MouseEvent('mouseup', {
+            bubbles: true,
+            cancelable: true,
+          });
+          chessBoard.current.dispatchEvent(mouseUpEvent);
+          setDraggingPiece(null);
+
+        } else {
+          setPos({ x: e.clientX, y: e.clientY });
+        }
+      }
+    }
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+
+
+    const target = e.target as HTMLElement;
+
+  }
 
 
 
   return (
-    <moveContext.Provider value={{ draggingPiece, pos, check,width}}>
+    <moveContext.Provider value={{ draggingPiece, pos, check, width, highlightedTiles, clickedPiece }}>
       <div
-        style={{width:width}}
+        style={{ width: width }}
         className={"board-" + player}
-        onMouseDown={(e)=>{handleMouseDown(e)}}
-        onMouseUp={(e)=>{handleMouseUp(e)}}
-        onMouseMove={(e)=>{handleMouseMove(e)}}
+        onPointerDown={(e) => { handleMouseDown(e) }}
+        onPointerUp={(e) => { handleMouseUp(e) }}
+        onPointerMove={(e) => { handleMouseMove(e) }}
         ref={chessBoard}
       >
 

@@ -2,9 +2,12 @@ import react, { useRef, useState, createContext, useEffect } from "react";
 import "./Chessboard.css";
 import Tile from "../Tile/Tile";
 import { PieceClass } from "../Piece/Piece";
+import { useParams } from "react-router-dom";
 
 // const initialPos: { [key: string]: string } = {
 //   a1: "r-w",
+
+
 //   b1: "kn-w",
 //   c1: "b-w",
 //   d1: "q-w",
@@ -113,23 +116,24 @@ interface playerData {
 interface piecePosType {
   [key: string]: string,
 }
+
 interface chessBoardProp {
-  start: boolean,
-  playerData: playerData,
   ws: WebSocket,
-  boardPos: piecePosType,
 }
 
 
-function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
+function Chessboard({ ws}: chessBoardProp) {
 
-  const player = playerData.col;
+  const roomId=useParams().id;
+  const [gameStart,setGameStart]=useState(false);
+
+  const [player,setPlayer]=useState<String|null>(null);
   const [width, setWidth] = useState(window.innerWidth / 3);
-  const [piecePos, setPiecePos] = useState({ ...boardPos });
+  const [piecePos, setPiecePos] = useState<piecePosType>({});
   const [draggingPiece, setDraggingPiece] = useState<HTMLElement | null>(null);
   const [clickedPiece, setClickedPiece] = useState<HTMLElement | null>(null);
   const [highlightedTiles, setHighlightTiles] = useState<String[] | null>(null);
-  const [turn, setTurn] = useState<number>(playerData.turn);
+  const [turn, setTurn] = useState<number>(-1);
   const [pos, setPos] = useState({
     x: 0,
     y: 0,
@@ -142,12 +146,19 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
   });
 
 
-
   const [gameOver, setGameOver] = useState<Boolean>(false);
 
   const chessBoard = useRef<HTMLDivElement | null>(null);
 
+
+
   useEffect(() => {
+    //send the join-room event to the server
+    const data={
+      event:'join-room',
+      message:roomId,
+    }
+    ws.send(JSON.stringify(data));
 
     window.addEventListener('resize', () => {
       setWidth(window.innerWidth / 3);
@@ -169,6 +180,15 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
         setHighlightTiles(null);
       }
 
+      if(event==='game-start'){
+        console.log('gamestarted');
+        setGameStart(true);
+        const {player,boardPos}=JSON.parse(message);
+        setPiecePos(boardPos);
+        setPlayer(player.col);
+        setTurn(player.turn);
+      }
+
     })
 
     return (() => {
@@ -180,9 +200,12 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
   //pawn promotion
   //en passant
 
+
+
+
   let file = "abcdefgh".split("");
   let rank = "12345678".split("");
-  const tiles: JSX.Element[] = [];
+  const [tiles,setTiles]=useState<JSX.Element[]>([]);
   let col;
 
 
@@ -190,29 +213,30 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
   file = player === 'b' ? file.reverse() : file;
   rank = player === 'b' ? rank.reverse() : rank;
 
-
-
-
-
-  for (let i = rank.length - 1; i >= 0; i--) {
-    col = i % 2 === 0.0 ? 'b' : 'w';
-    for (let j = 0; j < file.length; j++) {
-      let piece = null;
-      for (let pos in piecePos) {
-        if (pos === file[j] + rank[i] && piecePos[pos]) {
-          piece = new PieceClass(
-            file[j] + rank[i],
-            "assets/images/" + piecePos[pos] + ".png",
-            piecePos[pos].split("-")[1],
-            piecePos[pos].split("-")[0]
-          );
+useEffect(()=>{
+    const tiles=[]; 
+    console.log(piecePos);
+    for (let i = rank.length - 1; i >= 0; i--) {
+      col = i % 2 === 0.0 ? 'b' : 'w';
+      for (let j = 0; j < file.length; j++) {
+        let piece = null;
+        for (let pos in piecePos) {
+          if (pos === file[j] + rank[i] && piecePos[pos]) {
+            piece = new PieceClass(
+              file[j] + rank[i],
+              "./assets/images/" + piecePos[pos] + ".png",
+              piecePos[pos].split("-")[1],
+              piecePos[pos].split("-")[0]
+            );
+          }
         }
+        tiles.push(<Tile id={file[j] + rank[i]} col={col} piece={piece} />);
+        col = col === "w" ? "b" : "w";
       }
-      tiles.push(<Tile id={file[j] + rank[i]} col={col} piece={piece} />);
-      col = col === "w" ? "b" : "w";
     }
-  }
+    setTiles([...tiles]);
 
+  },[piecePos,player,gameStart])
 
 
 
@@ -274,8 +298,6 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
     return moves;
   }
 
-  //this function has a bug, but I am leaving it here on purpose so that I can cheat
-  //[bug-hint]:"when you see yourself in trouble retreat".
 
   function getBishopMoves(start: string, piece: string) {
     const moves = [];
@@ -377,8 +399,6 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
     return moves;
   }
 
-  //this function has a bug, but I am leaving it here on purpose so that I can cheat
-  //[bug-hint]:"when you see yourself in trouble retreat".
   function getRookMoves(start: string, piece: string) {
     const moves: string[] = [];
     let temp = '';
@@ -475,7 +495,6 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
     let square = '';
 
     //upward right
-
     square = String.fromCharCode(file.charCodeAt(0) + 1) + (parseInt(rank) + 1).toString();
 
     if (Object.hasOwn(piecePos, square) && (piecePos[square] === '' || piecePos[square].split('-')[1] !== piece.split('-')[1])) {
@@ -544,14 +563,6 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
 
     return moves;
   }
-
-
-
-
-
-
-
-
 
   function kingBetweenMove() {
     const moves: string[] = [];
@@ -914,15 +925,11 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
     }
   }
 
-  function handleTouchStart(e: React.TouchEvent) {
-
-
-    const target = e.target as HTMLElement;
-
-  }
 
 
 
+if(gameStart){
+  console.log(tiles);
   return (
     <moveContext.Provider value={{ draggingPiece, pos, check, width, highlightedTiles, clickedPiece }}>
       <div
@@ -933,11 +940,18 @@ function Chessboard({ start, playerData, ws, boardPos }: chessBoardProp) {
         onPointerMove={(e) => { handleMouseMove(e) }}
         ref={chessBoard}
       >
-
-        {tiles}
+       {tiles}
       </div>
     </moveContext.Provider>
   );
+}
+else{
+  return(
+    <>
+      waiting for other player to join
+    </>
+  )
+}
 }
 
 export default Chessboard;

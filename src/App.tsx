@@ -1,6 +1,10 @@
 import react, { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import './App.css';
 import Chessboard from './Chessboard/Chessboard';
+import Home from './Home/Home';
+import Login from "./Login/Login";
+import SignUp from './SignUp/SignUp';
 
 function App() {
 
@@ -9,10 +13,7 @@ function App() {
     turn:number,
   }
   const [connected,setConnection]=useState(false);
-  const [gameStart,setGameStart]=useState(false);
   const[ws,setWS]=useState<WebSocket|null>(null);
-  const [playerData,setPlayerData]=useState<playerData|null>();
-  const [boardPos,setBoardPos]=useState<{[key:string]:string}|null>();
 
 
   useEffect(()=>{
@@ -21,26 +22,6 @@ function App() {
     socket.addEventListener('open',()=>{
       setConnection(true);
       setWS(socket);
-
-      //send the join-room event to the server
-      const data={
-        event:'join-room',
-        message:"room",
-      }
-      socket.send(JSON.stringify(data));
-    })
-
-    
-    socket.addEventListener('message',(data)=>{
-      const {event,message}=JSON.parse(data.data);
-      //if game-start has been received set the gameStart to true
-      if(event==='game-start'){
-        setGameStart(true);
-        const parsedMessage=JSON.parse(message);
-
-        setPlayerData(parsedMessage.player);
-        setBoardPos(parsedMessage.boardPos);
-      }
     })
 
     return ()=>{
@@ -49,10 +30,17 @@ function App() {
 
   },[])
   
-  if(connected && ws && boardPos && playerData){
+  if(connected && ws){
       return (
         <div className="App" >
-          <Chessboard start={gameStart} playerData={playerData} ws={ws} boardPos={boardPos}/>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Home/>}></Route>
+              <Route path="/login" element={<Login/>}></Route>
+              <Route path="signup" element={<SignUp/>}></Route>
+              <Route path="/play/:id" element={<Chessboard  ws={ws} />}></Route>
+            </Routes>
+          </BrowserRouter>
         </div>
       );
     }

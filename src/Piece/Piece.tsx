@@ -34,7 +34,7 @@ function Piece({piece}:Prop){
         minHeight:`${350/8}px`,
     }
     const datatypeValue=piece.name+'-'+piece.col;
-
+    
     const classValue=`piece ${draggingPiece?.dataset.pos===piece.pos?'dragging':''} `;
 
     return (

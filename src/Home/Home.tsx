@@ -25,10 +25,10 @@ const Home=()=>{
 
         //generate a link
         const roomId=generateRandomId();
-        const link=`http://localhost:3000/${roomId}`;
+        const link=`/play/${roomId}`;
 
         //redirect user to the play page
-        history('/play');
+        history(link);
 
     }
     return(   

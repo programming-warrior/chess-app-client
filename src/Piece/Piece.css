@@ -3,10 +3,12 @@
     background-position: center;
     background-size: cover;
     cursor: grab;
+    z-index:50;
 }
 
 .dragging{
     position: absolute;
+    z-index: 100;
     transform: translate(-50%,-50%);
 }
 

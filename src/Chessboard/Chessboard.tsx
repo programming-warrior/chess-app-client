@@ -95,7 +95,7 @@ interface MoveContextType {
 }
 
 
-const pieceMoveAudio = new Audio("assets/sounds/piece_move.wav");
+const pieceMoveAudio = new Audio("../assets/sounds/piece_move.wav");
 
 
 export const moveContext = createContext<MoveContextType>({
@@ -171,7 +171,7 @@ function Chessboard({ ws}: chessBoardProp) {
         setPiecePos({ ...boardPos });
         setCheck({ ...check });
         if (currentPlayer != player) {
-          pieceMoveAudio.play();
+          // pieceMoveAudio.play();
         }
         setTurn(() => {
           return currentPlayer === player ? 1 : 0;
@@ -224,7 +224,7 @@ useEffect(()=>{
           if (pos === file[j] + rank[i] && piecePos[pos]) {
             piece = new PieceClass(
               file[j] + rank[i],
-              "./assets/images/" + piecePos[pos] + ".png",
+              "/../assets/images/" + piecePos[pos] + ".png",
               piecePos[pos].split("-")[1],
               piecePos[pos].split("-")[0]
             );
@@ -236,7 +236,7 @@ useEffect(()=>{
     }
     setTiles([...tiles]);
 
-  },[piecePos,player,gameStart])
+  },[piecePos])
 
 
 
@@ -932,16 +932,19 @@ if(gameStart){
   console.log(tiles);
   return (
     <moveContext.Provider value={{ draggingPiece, pos, check, width, highlightedTiles, clickedPiece }}>
-      <div
-        style={{ width: width }}
-        className={"board-" + player}
-        onPointerDown={(e) => { handleMouseDown(e) }}
-        onPointerUp={(e) => { handleMouseUp(e) }}
-        onPointerMove={(e) => { handleMouseMove(e) }}
-        ref={chessBoard}
-      >
-       {tiles}
+      <div className="absolute top-0 left-0 w-screen h-screen ">
+        <div
+          style={{ width: width }}
+          className={"board-" + player}
+          onPointerDown={(e) => { handleMouseDown(e) }}
+          onPointerUp={(e) => { handleMouseUp(e) }}
+          onPointerMove={(e) => { handleMouseMove(e) }}
+          ref={chessBoard}
+        >
+        {tiles}
+        </div>
       </div>
+
     </moveContext.Provider>
   );
 }

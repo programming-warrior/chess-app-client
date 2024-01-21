@@ -37,7 +37,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Home/>}></Route>
               <Route path="/login" element={<Login/>}></Route>
-              <Route path="signup" element={<SignUp/>}></Route>
+              <Route path="/signup" element={<SignUp/>}></Route>
               <Route path="/play/:id" element={<Chessboard  ws={ws} />}></Route>
             </Routes>
           </BrowserRouter>

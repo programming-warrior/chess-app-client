@@ -8,47 +8,38 @@ import SignUp from './SignUp/SignUp';
 
 function App() {
 
-  interface playerData{
-    col:string,
-    turn:number,
-  }
-  const [connected,setConnection]=useState(false);
-  const[ws,setWS]=useState<WebSocket|null>(null);
+  const [ws, setWS] = useState<WebSocket | null>(null);
 
-
-  useEffect(()=>{
-    //make connection with the server
-     const socket=new WebSocket("ws://localhost:7000");
-    socket.addEventListener('open',()=>{
-      setConnection(true);
+    const getWs=(socket:WebSocket|null)=>{
       setWS(socket);
-    })
-
-    return ()=>{
-      socket.close();
+      console.log("ws "+ws)
+      console.log("socket "+socket);
+      return(()=>{
+        if(socket){
+          socket.close();
+          if(ws){
+            ws.close();
+          }
+        }
+    
+      })
     }
 
-  },[])
-  
-  if(connected && ws){
-      return (
-        <div className="App" >
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Home/>}></Route>
-              <Route path="/login" element={<Login/>}></Route>
-              <Route path="/signup" element={<SignUp/>}></Route>
-              <Route path="/play/:id" element={<Chessboard  ws={ws} />}></Route>
-            </Routes>
-          </BrowserRouter>
-        </div>
-      );
-    }
-  else{
-    return(
-      <div>Cannot connect to the server</div>
-    )
-  }
+    return (
+      <div className="App" >
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Home getWs={getWs}/>}></Route>
+            <Route path="/login" element={<Login />}></Route>
+            <Route path="/signup" element={<SignUp />}></Route>
+            {
+              ws? <Route path="/play/:id" element={<Chessboard ws={ws} />}></Route>:"login required"
+            }
+          </Routes>
+        </BrowserRouter>
+      </div>
+    );
+
 
 }
 

@@ -2,7 +2,7 @@ import react, { useRef, useState, createContext, useEffect } from "react";
 import "./Chessboard.css";
 import Tile from "../Tile/Tile";
 import { PieceClass } from "../Piece/Piece";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 // const initialPos: { [key: string]: string } = {
 //   a1: "r-w",
@@ -123,7 +123,7 @@ interface chessBoardProp {
 
 
 function Chessboard({ ws}: chessBoardProp) {
-
+  const history=useNavigate();
   const roomId=useParams().id;
   const [gameStart,setGameStart]=useState(false);
 
@@ -153,10 +153,13 @@ function Chessboard({ ws}: chessBoardProp) {
 
 
   useEffect(() => {
+
     //send the join-room event to the server
     const data={
       event:'join-room',
-      message:roomId,
+      message:{
+        roomId,
+      }
     }
     ws.send(JSON.stringify(data));
 
@@ -166,6 +169,11 @@ function Chessboard({ ws}: chessBoardProp) {
 
     ws.addEventListener('message', (data) => {
       const { event, message } = JSON.parse(data.data);
+
+      if(event==='invalid-roomId'){
+        history('/');
+      }
+
       if (event === 'move-validated') {
         const { boardPos, check, currentPlayer } = message;
         setPiecePos({ ...boardPos });

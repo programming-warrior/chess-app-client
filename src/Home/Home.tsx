@@ -1,54 +1,101 @@
-
 import react, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+interface prop{
+  getWs:(socket:WebSocket|null)=>void ;
+}
 
+const Home = ({getWs}:prop) => {
+    const [token, settoken] = useState<string | null>(null);
+    const [ws,setWs]=useState<WebSocket|null>(null);
 
-const Home = () => {
-    const [playerId, setPlayerId] = useState<string | null>(null);
+    const [loginRequired, setLoginRequired] = useState<boolean>(false);
     const history = useNavigate();
 
+    //reading token
     useEffect(() => {
         const cookieString = document.cookie;
         const cookies = cookieString.split(';');
         for (const cookie of cookies) {
             const [cookieName, cookieValue] = cookie.split(':');
-            if (cookieName === 'playerId') {
-                setPlayerId(cookieValue);
+            if (cookieName === 'token' && cookieValue) {
+                settoken(cookieValue);
             }
         }
+
     }, [])
 
-    function generateRandomId() {
-        let len = 5;
-        const str = "aorbcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        let result = "";
-        for (let i = 0; i < 5; i++) {
-            let randomIndex = Math.floor(Math.random() * str.length);
-            result += str[randomIndex];
-        }
-        return result;
-    }
+    //event listeners
+    useEffect(() => {
+        const modal = document.querySelectorAll('.modal');
+        modal.forEach((m) => {
+            m.addEventListener('click', (e) => {
+                setLoginRequired(false);
+                e.stopPropagation();
+            })
+        })
+    }, []);
+
+
+    useEffect(()=>{
+        //establish socket connection 
+            const socket=new WebSocket(`ws://localhost:7000`);
+   
+            socket.addEventListener('open',()=>{
+                setWs(socket);
+                getWs(socket);
+            })
+            socket.addEventListener('close',()=>{
+                setWs(null);
+                getWs(null);
+            })
+    },[])
+
+
+
 
 
     function handlePlayBtn() {
         //if the user is not login, ask if want to play as guest
-
-        //generate a link
-        const roomId = generateRandomId();
-        const link = `/play/${roomId}`;
-
-        //redirect user to the play page
-        history(link);
-
+        if (token) {
+            //send request to initialize the game 
+            fetch('http://localhost:7000/initializeRoom',{
+                headers:{
+                    'Authorization':`Bearer ${token}`
+                }
+            }).then((res)=>{
+                if (res.status === 201 || res.status === 200) {
+                    return res.json();
+                } else {
+                    throw new Error('Unexpected response status: ' + res.status);
+                }
+            }).then((data)=>{
+                const roomId=data.roomId;
+                const link=`/play/${roomId}`;
+                history(link);
+            }).catch((e)=>{
+                console.log(e);
+                setLoginRequired(true);
+            })
+        }
+        else {
+            setLoginRequired(true);
+        }
     }
+
+
     return (
+
         <div className='main bg-slate-950 h-screen'>
+            <div className={`modal absolute top-0 left-0 w-full h-full ${loginRequired ? 'block' : 'hidden'}`}>
+                <div className="flex justify-center align-middle text-white">
+                    <p >You need to login to play!</p>
+                </div>
+            </div>
 
             <div className="">
-
                 {
-                    playerId===null ?
+                    token === null ?
                         (
                             <>
                                 <Link to="/login" >

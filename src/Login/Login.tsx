@@ -34,7 +34,7 @@ const Login=()=>{
 
             if(data){
                 console.log(data);
-                document.cookie=`playerId:${data._id}`;
+                document.cookie=`token:${data.token}`;
                 history('/');
             }
         }

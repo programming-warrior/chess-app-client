@@ -39,7 +39,7 @@ const SignUp=()=>{
     
             const data=await res.json(); 
             if(data){
-                document.cookie=`playerId:${data._id}`;
+                document.cookie=`token:${data.token}`;
                 history('/');
             }
         }

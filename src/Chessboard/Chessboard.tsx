@@ -937,7 +937,6 @@ useEffect(()=>{
 
 
 if(gameStart){
-  console.log(tiles);
   return (
     <moveContext.Provider value={{ draggingPiece, pos, check, width, highlightedTiles, clickedPiece }}>
       <div className="absolute top-0 left-0 w-screen h-screen ">

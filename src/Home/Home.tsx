@@ -39,19 +39,28 @@ const Home = ({getWs}:prop) => {
 
     useEffect(()=>{
         //establish socket connection 
-            const socket=new WebSocket(`ws://localhost:7000`);
-   
-            socket.addEventListener('open',()=>{
+        if(!ws){
+            console.log(ws);
+            console.log('sending con request')
+             const socket=new WebSocket(`ws://localhost:7000`);
+             socket.addEventListener('open',()=>{
+                console.log('opening')
                 setWs(socket);
                 getWs(socket);
             })
             socket.addEventListener('close',()=>{
                 setWs(null);
                 getWs(null);
+                console.log('closing');
+                socket?.close();
             })
+        }
+          
     },[])
 
-
+    useEffect(()=>{
+        console.log(ws);
+    },[ws])
 
 
 

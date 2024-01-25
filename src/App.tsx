@@ -12,18 +12,15 @@ function App() {
 
     const getWs=(socket:WebSocket|null)=>{
       setWS(socket);
-      console.log("ws "+ws)
-      console.log("socket "+socket);
       return(()=>{
-        if(socket){
-          socket.close();
-          if(ws){
-            ws.close();
-          }
-        }
-    
+          socket?.close();
+          ws?.close();
       })
     }
+
+    useEffect(()=>{
+      console.log('hey app');
+    },[])
 
     return (
       <div className="App" >
@@ -33,7 +30,7 @@ function App() {
             <Route path="/login" element={<Login />}></Route>
             <Route path="/signup" element={<SignUp />}></Route>
             {
-              ws? <Route path="/play/:id" element={<Chessboard ws={ws} />}></Route>:"login required"
+              ws? <Route path="/play/:id" element={<Chessboard ws={ws} />}></Route>:""
             }
           </Routes>
         </BrowserRouter>

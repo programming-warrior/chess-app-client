@@ -1,15 +1,26 @@
 import react, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-interface prop{
-  getWs:(socket:WebSocket|null)=>void ;
+interface joinPrevGameType{
+    roomId:string
 }
 
-const Home = ({getWs}:prop) => {
+interface propType {
+    ws: WebSocket | null,
+    joinPrevGame:joinPrevGameType|null
+}
+
+const Home = ({ ws, joinPrevGame}: propType) => {
     const [token, settoken] = useState<string | null>(null);
-    const [ws,setWs]=useState<WebSocket|null>(null);
+    const [username,setUsername]=useState<string|null>(null);
 
     const [loginRequired, setLoginRequired] = useState<boolean>(false);
+
+    const [popup, setPopUp] = useState<boolean>(false);
+    const [popupSection, setPopUpSection] = useState<string>("join");
+
+    const [roomId, setRoomId] = useState<string>("");
+
     const history = useNavigate();
 
     //reading token
@@ -23,79 +34,102 @@ const Home = ({getWs}:prop) => {
             }
         }
 
+        const username=localStorage.getItem('username');
+        setUsername(username);
+
     }, [])
+
+
+
 
     //event listeners
     useEffect(() => {
         const modal = document.querySelectorAll('.modal');
-        modal.forEach((m) => {
-            m.addEventListener('click', (e) => {
-                setLoginRequired(false);
+        modal[1].addEventListener('click', (e) => {
+            setLoginRequired(false);
+            setPopUp(false);
+        })
+
+        const roomBtn=document.querySelectorAll('.room-btn');
+        roomBtn.forEach((r)=>{
+            r.lastChild?.addEventListener('click',(e)=>{
+                setPopUpSection((prev)=>{
+                    return prev==='create'?'join':'create';
+                })
                 e.stopPropagation();
             })
         })
+
     }, []);
 
 
+
+
     useEffect(()=>{
-        //establish socket connection 
-        if(!ws){
-            console.log(ws);
-            console.log('sending con request')
-             const socket=new WebSocket(`ws://localhost:7000`);
-             socket.addEventListener('open',()=>{
-                console.log('opening')
-                setWs(socket);
-                getWs(socket);
-            })
-            socket.addEventListener('close',()=>{
-                setWs(null);
-                getWs(null);
-                console.log('closing');
-                socket?.close();
-            })
+        if(joinPrevGame && ws){
+            history(`/play/${joinPrevGame.roomId}`);
         }
-          
+    },[ws,joinPrevGame])
+
+    useEffect(()=>{
+        return(()=>{
+            console.log('home closed');
+        })
     },[])
 
-    useEffect(()=>{
-        console.log(ws);
-    },[ws])
 
-
-
-    function handlePlayBtn() {
+    function createNewGame() {
         //if the user is not login, ask if want to play as guest
-        if (token) {
-            //send request to initialize the game 
-            fetch('http://localhost:7000/initializeRoom',{
-                headers:{
-                    'Authorization':`Bearer ${token}`
-                }
-            }).then((res)=>{
-                if (res.status === 201 || res.status === 200) {
-                    return res.json();
-                } else {
-                    throw new Error('Unexpected response status: ' + res.status);
-                }
-            }).then((data)=>{
-                const roomId=data.roomId;
-                const link=`/play/${roomId}`;
-                history(link);
-            }).catch((e)=>{
-                console.log(e);
-                setLoginRequired(true);
-            })
-        }
-        else {
+        //send request to initialize the game 
+        fetch('http://localhost:7000/initializeRoom', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        }).then((res) => {
+            if (res.status === 201 || res.status === 200) {
+                return res.json();
+            } else {
+                throw new Error('Unexpected response status: ' + res.status);
+            }
+        }).then((data) => {
+            const room = data.roomId;
+            const link = `/play/${room}`;
+            history(link);
+        }).catch((e) => {
+            console.log(e);
             setLoginRequired(true);
-        }
+        })
     }
+
+    function JoinGame() {
+        history('/play/' + roomId);
+    }
+
+
 
 
     return (
 
         <div className='main bg-slate-950 h-screen'>
+            <div className={`modal absolute top-0 left-0 w-full h-full ${!loginRequired && popup ? 'block' : 'hidden'}`}>
+                    <div className={`${popupSection==='create'?'flex':'hidden'} flex-col justify-center items-center room-btn z-50 `}>
+                        <div className="input-container">
+                            <button className='hover:bg-slate-500 bg-slate-600 text-white font-bold py-2 px-4 rounded mx-4 my-4' onClick={createNewGame}>Create a new game</button>
+                        </div>
+                        <p className='text-white cursor-pointer'>join a game</p>
+                    </div>
+                    <div className={`${popupSection==='join'?'flex':'hidden'} flex-col justify-center items-center room-btn z-50`}>
+                        <div className="input-container">
+                            <input type="text" value={roomId} onChange={(e) => { setRoomId(e.target.value) }} />
+                        </div>
+                        <div className="input-container">
+                            <button className='hover:bg-slate-500 bg-slate-600 text-white font-bold py-2 px-4 rounded mx-4 my-4' onClick={JoinGame}>join</button>
+                        </div>
+                        <p className="text-white cursor-pointer" >create new game</p>
+                    </div>
+        </div>
+
+
             <div className={`modal absolute top-0 left-0 w-full h-full ${loginRequired ? 'block' : 'hidden'}`}>
                 <div className="flex justify-center align-middle text-white">
                     <p >You need to login to play!</p>
@@ -129,7 +163,7 @@ const Home = ({getWs}:prop) => {
                 </div>
                 <div className="w-2/5  p-4 flex flex-col justify-center bg-slate-800 items-center rounded">
                     <h2 className="text-white my-2" >Play Online Chess with your friends!</h2>
-                    <button className=" hover:bg-slate-500 bg-slate-600 text-white font-bold py-2 px-4 rounded" onClick={handlePlayBtn}>
+                    <button className=" hover:bg-slate-500 bg-slate-600 text-white font-bold py-2 px-4 rounded" onClick={() => { token ? setPopUp(true) : setLoginRequired(true) }}>
                         Play With Friend
                     </button>
                 </div>

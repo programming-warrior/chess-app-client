@@ -35,7 +35,7 @@ const Login=()=>{
             if(data){
                 console.log(data);
                 document.cookie=`token:${data.token}`;
-                history('/');
+                history('/estbcon');
             }
         }
         catch(e){

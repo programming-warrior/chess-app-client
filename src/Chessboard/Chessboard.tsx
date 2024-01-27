@@ -118,11 +118,11 @@ interface piecePosType {
 }
 
 interface chessBoardProp {
-  ws: WebSocket,
+  ws: WebSocket |null,
 }
 
 
-function Chessboard({ ws}: chessBoardProp) {
+function Chessboard({ ws}:chessBoardProp) {
   const history=useNavigate();
   const roomId=useParams().id;
   const [gameStart,setGameStart]=useState(false);
@@ -161,13 +161,13 @@ function Chessboard({ ws}: chessBoardProp) {
         roomId,
       }
     }
-    ws.send(JSON.stringify(data));
+    ws?.send(JSON.stringify(data));
 
     window.addEventListener('resize', () => {
       setWidth(window.innerWidth / 3);
     })
 
-    ws.addEventListener('message', (data) => {
+    ws?.addEventListener('message', (data) => {
       const { event, message } = JSON.parse(data.data);
 
       if(event==='invalid-roomId'){
@@ -189,9 +189,9 @@ function Chessboard({ ws}: chessBoardProp) {
       }
 
       if(event==='game-start'){
-        console.log('gamestarted');
         setGameStart(true);
         const {player,boardPos}=JSON.parse(message);
+        console.log(player);
         setPiecePos(boardPos);
         setPlayer(player.col);
         setTurn(player.turn);
@@ -199,16 +199,17 @@ function Chessboard({ ws}: chessBoardProp) {
 
     })
 
-    return (() => {
-      ws.close();
-    })
-  }, [])
+  }, [ws])
 
   //two more things to add ----->
   //pawn promotion
   //en passant
 
-
+  useEffect(()=>{
+    return(()=>{
+      ws?.close();
+    })
+  },[])
 
 
   let file = "abcdefgh".split("");
@@ -223,7 +224,6 @@ function Chessboard({ ws}: chessBoardProp) {
 
 useEffect(()=>{
     const tiles=[]; 
-    console.log(piecePos);
     for (let i = rank.length - 1; i >= 0; i--) {
       col = i % 2 === 0.0 ? 'b' : 'w';
       for (let j = 0; j < file.length; j++) {
@@ -814,7 +814,7 @@ useEffect(()=>{
               }
       
               //send the move to the server for validation
-              ws.send(JSON.stringify(data));
+              ws?.send(JSON.stringify(data));
         }
       }
       else if (clickedPiece && target.classList.contains('tile') && !gameOver) {
@@ -831,7 +831,7 @@ useEffect(()=>{
             }
     
             //send the move to the server for validation
-            ws.send(JSON.stringify(data));
+            ws?.send(JSON.stringify(data));
       }
       else{
         setClickedPiece(null);
@@ -887,7 +887,7 @@ useEffect(()=>{
 
 
             //send the move to the server for validation
-            ws.send(JSON.stringify(data));
+            ws?.send(JSON.stringify(data));
 
           }
         }
@@ -932,8 +932,6 @@ useEffect(()=>{
       }
     }
   }
-
-
 
 
 if(gameStart){

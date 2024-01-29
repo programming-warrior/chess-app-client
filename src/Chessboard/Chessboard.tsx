@@ -118,22 +118,26 @@ interface piecePosType {
 }
 
 interface chessBoardProp {
-  ws: WebSocket |null,
+  ws: WebSocket | null,
 }
 
 
-function Chessboard({ ws}:chessBoardProp) {
-  const history=useNavigate();
-  const roomId=useParams().id;
-  const [gameStart,setGameStart]=useState(false);
+function Chessboard({ ws }: chessBoardProp) {
+  const history = useNavigate();
+  const roomId = useParams().id;
+  const [gameStart, setGameStart] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
 
-  const [player,setPlayer]=useState<String|null>(null);
+  const [player, setPlayer] = useState<String | null>(null);
   const [width, setWidth] = useState(window.innerWidth / 3);
   const [piecePos, setPiecePos] = useState<piecePosType>({});
   const [draggingPiece, setDraggingPiece] = useState<HTMLElement | null>(null);
   const [clickedPiece, setClickedPiece] = useState<HTMLElement | null>(null);
   const [highlightedTiles, setHighlightTiles] = useState<String[] | null>(null);
   const [turn, setTurn] = useState<number>(-1);
+  const [yourClock,setYourClock]=useState<number>(0);
+  const [othersClock,setOthersClock]=useState<number>(0);
+
   const [pos, setPos] = useState({
     x: 0,
     y: 0,
@@ -151,13 +155,19 @@ function Chessboard({ ws}:chessBoardProp) {
   const chessBoard = useRef<HTMLDivElement | null>(null);
 
 
+  useEffect(() => {
+    if (!ws) {
+      history('/')
+    }
+  }, [ws])
+
 
   useEffect(() => {
 
     //send the join-room event to the server
-    const data={
-      event:'join-room',
-      message:{
+    const data = {
+      event: 'join-room',
+      message: {
         roomId,
       }
     }
@@ -170,8 +180,40 @@ function Chessboard({ ws}:chessBoardProp) {
     ws?.addEventListener('message', (data) => {
       const { event, message } = JSON.parse(data.data);
 
-      if(event==='invalid-roomId'){
+      if (event === 'invalid-roomId') {
         history('/');
+      }
+
+      if(event==='tick'){
+        console.log(message);
+        const{player,time}=message;
+        if(player===player){
+          setYourClock(time/600);
+        }
+        else{
+          setOthersClock(time/600);
+        }
+      }
+
+      if (event === 'checkmate') {
+        const { boardPos, check, winner } = message;
+        console.log(winner);
+        setPiecePos({ ...boardPos });
+        setCheck({ ...check });
+        setGameOver(true);
+        setResult(winner === player ? 'won' : 'lost');
+      }
+
+      if(event==='time-out'){
+        const {player,time,winner}=message;
+        if(player===player){
+          setYourClock(Math.ceil(time/600));
+        }
+        else{
+          setOthersClock(Math.ceil(time/600));
+        }
+        setGameOver(true);
+        setResult(winner==='player'?'won':'lost');
       }
 
       if (event === 'move-validated') {
@@ -188,9 +230,9 @@ function Chessboard({ ws}:chessBoardProp) {
         setHighlightTiles(null);
       }
 
-      if(event==='game-start'){
+      if (event === 'game-start') {
         setGameStart(true);
-        const {player,boardPos}=JSON.parse(message);
+        const { player, boardPos } = JSON.parse(message);
         console.log(player);
         setPiecePos(boardPos);
         setPlayer(player.col);
@@ -201,20 +243,26 @@ function Chessboard({ ws}:chessBoardProp) {
 
   }, [ws])
 
+
+
+
+
+
+
   //two more things to add ----->
   //pawn promotion
   //en passant
 
-  useEffect(()=>{
-    return(()=>{
+  useEffect(() => {
+    return (() => {
       ws?.close();
     })
-  },[])
+  }, [])
 
 
   let file = "abcdefgh".split("");
   let rank = "12345678".split("");
-  const [tiles,setTiles]=useState<JSX.Element[]>([]);
+  const [tiles, setTiles] = useState<JSX.Element[]>([]);
   let col;
 
 
@@ -222,8 +270,8 @@ function Chessboard({ ws}:chessBoardProp) {
   file = player === 'b' ? file.reverse() : file;
   rank = player === 'b' ? rank.reverse() : rank;
 
-useEffect(()=>{
-    const tiles=[]; 
+  useEffect(() => {
+    const tiles = [];
     for (let i = rank.length - 1; i >= 0; i--) {
       col = i % 2 === 0.0 ? 'b' : 'w';
       for (let j = 0; j < file.length; j++) {
@@ -244,7 +292,7 @@ useEffect(()=>{
     }
     setTiles([...tiles]);
 
-  },[piecePos])
+  }, [piecePos])
 
 
 
@@ -735,18 +783,18 @@ useEffect(()=>{
 
       //addition condition for king movement
       if (type === 'k') {
-        if(check.kingPos && check.attackingPiece){
+        if (check.kingPos && check.attackingPiece) {
           //temporarily removing the attacked king from the board
-          piecePos[check.kingPos]='';
+          piecePos[check.kingPos] = '';
         }
         for (let i = 0; i < moves.length; i++) {
           if (isProtected(moves[i], piece.split('-')[1] === 'w' ? 'b' : 'w')) {
             moves[i] = '';
           }
         }
-        if(check.kingPos && check.kingCol){
+        if (check.kingPos && check.kingCol) {
           //adding back the king to the board
-          piecePos[check.kingPos]=`k-${check.kingCol}`
+          piecePos[check.kingPos] = `k-${check.kingCol}`
         }
       }
 
@@ -778,6 +826,9 @@ useEffect(()=>{
 
 
   function handleMouseDown(e: react.PointerEvent) {
+    if (gameOver) {
+      return;
+    }
     const target = e.target as HTMLElement;
     if (e.pointerType === 'mouse') {
       if (!draggingPiece && target.classList.contains("piece") && !gameOver) {
@@ -792,48 +843,48 @@ useEffect(()=>{
       }
     }
     else if (e.pointerType === 'touch') {
-      if (target.classList.contains('piece') && !gameOver){
+      if (target.classList.contains('piece') && !gameOver) {
 
-        if(target!==clickedPiece && target.dataset.type && player===target.dataset.type.split('-')[1]){
+        if (target !== clickedPiece && target.dataset.type && player === target.dataset.type.split('-')[1]) {
           setClickedPiece(target);
           if (target.dataset.pos && target.dataset.type) {
             showMoves(target.dataset.pos, target.dataset.type);
           }
         }
-        else if(clickedPiece && target.dataset.type && target.dataset.type.split('-')[1]!==player ){
-       
-              const squareId = target.dataset.id;
-              //send the piece-move event to the server for validation
-              const data = {
-                event: "piece-move",
-                message: {
-                  startingPosition: clickedPiece.dataset.pos,
-                  movedPosition: squareId,
-                  piece: clickedPiece.dataset.type,
-                }
-              }
-      
-              //send the move to the server for validation
-              ws?.send(JSON.stringify(data));
+        else if (clickedPiece && target.dataset.type && target.dataset.type.split('-')[1] !== player) {
+
+          const squareId = target.dataset.id;
+          //send the piece-move event to the server for validation
+          const data = {
+            event: "piece-move",
+            message: {
+              startingPosition: clickedPiece.dataset.pos,
+              movedPosition: squareId,
+              piece: clickedPiece.dataset.type,
+            }
+          }
+
+          //send the move to the server for validation
+          ws?.send(JSON.stringify(data));
         }
       }
       else if (clickedPiece && target.classList.contains('tile') && !gameOver) {
-    
-            const squareId = target.dataset.id;
-            //send the piece-move event to the server for validation
-            const data = {
-              event: "piece-move",
-              message: {
-                startingPosition: clickedPiece.dataset.pos,
-                movedPosition: squareId,
-                piece: clickedPiece.dataset.type,
-              }
-            }
-    
-            //send the move to the server for validation
-            ws?.send(JSON.stringify(data));
+
+        const squareId = target.dataset.id;
+        //send the piece-move event to the server for validation
+        const data = {
+          event: "piece-move",
+          message: {
+            startingPosition: clickedPiece.dataset.pos,
+            movedPosition: squareId,
+            piece: clickedPiece.dataset.type,
+          }
+        }
+
+        //send the move to the server for validation
+        ws?.send(JSON.stringify(data));
       }
-      else{
+      else {
         setClickedPiece(null);
         setHighlightTiles(null);
       }
@@ -841,7 +892,7 @@ useEffect(()=>{
   }
 
   function handleMouseUp(e: react.PointerEvent) {
-    if (e.pointerType === 'mouse') {
+    if (!gameOver && e.pointerType === 'mouse') {
 
 
       if (draggingPiece && chessBoard.current && !gameOver) {
@@ -900,7 +951,7 @@ useEffect(()=>{
   }
 
   function handleMouseMove(e: React.PointerEvent) {
-    if (e.pointerType === 'mouse') {
+    if (!gameOver && e.pointerType === 'mouse') {
       if (draggingPiece && !gameOver && chessBoard.current) {
         const offsetX = chessBoard.current.offsetLeft;
         const offsetY = chessBoard.current.offsetTop;
@@ -934,32 +985,42 @@ useEffect(()=>{
   }
 
 
-if(gameStart){
-  return (
-    <moveContext.Provider value={{ draggingPiece, pos, check, width, highlightedTiles, clickedPiece }}>
-      <div className="absolute top-0 left-0 w-screen h-screen ">
-        <div
-          style={{ width: width }}
-          className={"board-" + player}
-          onPointerDown={(e) => { handleMouseDown(e) }}
-          onPointerUp={(e) => { handleMouseUp(e) }}
-          onPointerMove={(e) => { handleMouseMove(e) }}
-          ref={chessBoard}
-        >
-        {tiles}
+  if (gameStart) {
+    return (
+      <>
+        <div className={`modal absolute z-10 top-0 left-0 right-0 bottom-0 justify-center items-center w-full h-full ${gameOver ? 'flex' : 'hidden'}`}>
+          <div className="flex  w-25 h-25 bg-black">
+            <p className="text-white">{result === 'won' ? 'You won' : 'You lost'}</p>
+          </div>
         </div>
-      </div>
+        <moveContext.Provider value={{ draggingPiece, pos, check, width, highlightedTiles, clickedPiece }}>
 
-    </moveContext.Provider>
-  );
-}
-else{
-  return(
-    <>
-      waiting for other player to join
-    </>
-  )
-}
+          <div className="absolute top-0 left-0 w-screen h-screen flex justify-center items-center">
+            {othersClock}
+            <div
+              style={{ width: width }}
+              className={"board-" + player}
+              onPointerDown={(e) => { handleMouseDown(e) }}
+              onPointerUp={(e) => { handleMouseUp(e) }}
+              onPointerMove={(e) => { handleMouseMove(e) }}
+              ref={chessBoard}
+            >
+              {tiles}
+            </div>
+            {yourClock}
+          </div>
+
+        </moveContext.Provider>
+      </>
+    );
+  }
+  else {
+    return (
+      <>
+        waiting for other player to join
+      </>
+    )
+  }
 }
 
 export default Chessboard;

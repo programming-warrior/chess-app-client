@@ -27,7 +27,7 @@ const SignUp=()=>{
             email,
             password
         }
-        console.log(body);
+
         try{
             const res=await fetch("http://localhost:7000/api/register",{
                 method:'POST',
@@ -40,7 +40,7 @@ const SignUp=()=>{
             const data=await res.json(); 
             if(data){
                 document.cookie=`token:${data.token}`;
-                history('/');
+                history('/estbcon');
             }
         }
         catch(e){

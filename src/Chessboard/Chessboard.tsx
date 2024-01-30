@@ -121,6 +121,10 @@ interface chessBoardProp {
   ws: WebSocket | null,
 }
 
+interface Clock{
+  min:number,
+  sec:number
+}
 
 function Chessboard({ ws }: chessBoardProp) {
   const history = useNavigate();
@@ -134,10 +138,9 @@ function Chessboard({ ws }: chessBoardProp) {
   const [draggingPiece, setDraggingPiece] = useState<HTMLElement | null>(null);
   const [clickedPiece, setClickedPiece] = useState<HTMLElement | null>(null);
   const [highlightedTiles, setHighlightTiles] = useState<String[] | null>(null);
-  const [turn, setTurn] = useState<number>(-1);
-  const [yourClock,setYourClock]=useState<number>(0);
-  const [othersClock,setOthersClock]=useState<number>(0);
-  let currentPlayer='';
+  const [yourClock,setYourClock]=useState<Clock|null>(null);
+  const [othersClock,setOthersClock]=useState<Clock|null>(null);
+  let you='';
 
   const [pos, setPos] = useState({
     x: 0,
@@ -164,84 +167,113 @@ function Chessboard({ ws }: chessBoardProp) {
 
 
   useEffect(() => {
-
-    //send the join-room event to the server
-    const data = {
-      event: 'join-room',
-      message: {
-        roomId,
-      }
-    }
-    ws?.send(JSON.stringify(data));
-
     window.addEventListener('resize', () => {
       setWidth(window.innerWidth / 3);
     })
 
-    ws?.addEventListener('message', (data) => {
-      const { event, message } = JSON.parse(data.data);
-      if (event === 'invalid-roomId') {
-        history('/');
-      }
-
-      if(event==='tick'){
-        console.log('tick received');
-        if(message.player==currentPlayer){
-          setYourClock(Math.ceil(message.time/100));
-        }
-        else{
-          setOthersClock(Math.ceil(message.time/100));
+    //send the join-room event to the server
+    if(!player && ws){
+      const data = {
+        event: 'join-room',
+        message: {
+          roomId,
         }
       }
-
-      if (event === 'checkmate') {
-        const { boardPos, check, winner } = message;
-
-        setPiecePos({ ...boardPos });
-        setCheck({ ...check });
-        setGameOver(true);
-        setResult(winner === player ? 'won' : 'lost');
-      }
-
-      if(event==='time-out'){
-        const {player,time,winner}=message;
-        if(player===currentPlayer){
-          setYourClock(Math.ceil(time/100));
+      ws?.send(JSON.stringify(data));
+    }
+  
+    function handleMessageEvent(data:string){
+        const { event, message } = JSON.parse(data);
+        if (event === 'invalid-roomId') {
+          history('/');
         }
-        else{
-          setOthersClock(Math.ceil(time/100));
+  
+        if(event==='tick'){
+          console.log('tick received');
+          console.log(player);
+          console.log(message.player);
+          if(you===message.player){
+            setYourClock({
+              min:Math.floor(message.time/6000),
+              sec:(Math.floor(message.time/100))%60,
+            });
+          }
+          else{
+            setOthersClock({
+              min:Math.floor(message.time/6000),
+              sec:(Math.floor(message.time/100))%60,
+            });
+          }
         }
-        setGameOver(true);
-        setResult(winner==='player'?'won':'lost');
-      }
-
-      if (event === 'move-validated') {
-        const { boardPos, check, currentPlayer } = message;
-        setPiecePos({ ...boardPos });
-        setCheck({ ...check });
-        if (currentPlayer != player) {
-          // pieceMoveAudio.play();
+  
+        if (event === 'checkmate') {
+          const { boardPos, check, winner } = message;
+          setPiecePos({ ...boardPos });
+          setCheck({ ...check });
+          setGameOver(true);
+          setResult(winner === you ? 'won' : 'lost');
         }
-        setTurn(() => {
-          return currentPlayer === player ? 1 : 0;
-        })
-        setClickedPiece(null);
-        setHighlightTiles(null);
-      }
+  
+        if(event==='time-out'){
+          const {player,time,winner}=message;
+          if(you===player){
+            setYourClock({
+              min:Math.floor(time/6000),
+              sec:(Math.floor(time/100))%60,
+            });
+          }
+          else{
+            setOthersClock({
+              min:Math.floor(time/6000),
+              sec:(Math.floor(time/100))%60,
+            });
+          }
+          setGameOver(true);
+          setResult(winner===you?'won':'lost');
+        }
+  
+        if (event === 'move-validated') {
+          const { boardPos, check, currentPlayer } = message;
+          setPiecePos({ ...boardPos });
+          setCheck({ ...check });
+          setClickedPiece(null);
+          setHighlightTiles(null);
+        }
+  
+        if (event === 'game-start') {
+          setGameStart(true);
+          const { player, boardPos,clock} = JSON.parse(message);
+          setPiecePos(boardPos);
+          setPlayer(player.col);
+          you=player.col;
+          if(you==='w'){
+            setYourClock({
+              min:Math.floor(clock['w']/6000),
+              sec:(Math.floor(clock['w']/100))%60,
+            });
+            setOthersClock({
+              min:Math.floor(clock['b']/6000),
+              sec:(Math.floor(clock['b']/100))%60,
+            });
+          }
+          else{
+            setYourClock({
+              min:Math.floor(clock['b']/6000),
+              sec:(Math.floor(clock['b']/100))%60,
+            });
+            setOthersClock({
+              min:Math.floor(clock['w']/6000),
+              sec:(Math.floor(clock['w']/100))%60,
+            });
+          }
 
-      if (event === 'game-start') {
-        console.log('game-start received');
-        setGameStart(true);
-        const { player, boardPos } = JSON.parse(message);
-        setPiecePos(boardPos);
-        setPlayer(player.col);
-        currentPlayer=player.col;
-        setTurn(player.turn);
-        setYourClock(Math.ceil(player.time/100));
-        setOthersClock(Math.ceil(player.time/100));
-      }
+        }
+  
+    }
 
-    })
+    ws?.addEventListener('message', (data)=>{
+      handleMessageEvent(data.data);
+    } )
 
   }, [ws])
 
@@ -1001,7 +1033,7 @@ function Chessboard({ ws }: chessBoardProp) {
         <moveContext.Provider value={{ draggingPiece, pos, check, width, highlightedTiles, clickedPiece }}>
 
           <div className="absolute top-0 left-0 w-screen h-screen flex justify-center items-center">
-            "other clock "{othersClock}
+          <span className="clock">{(othersClock && othersClock?.min<10 )?'0'+othersClock?.min:othersClock?.min}:{othersClock?.sec}</span>
             <div
               style={{ width: width }}
               className={"board-" + player}
@@ -1012,7 +1044,7 @@ function Chessboard({ ws }: chessBoardProp) {
             >
               {tiles}
             </div>
-            "your clock" {yourClock}
+              <span className="clock">{(yourClock && yourClock?.min<10 )?'0'+yourClock?.min:yourClock?.min}:{yourClock?.sec}</span>
           </div>
 
         </moveContext.Provider>

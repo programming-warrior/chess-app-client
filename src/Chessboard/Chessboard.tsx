@@ -128,7 +128,7 @@ function Chessboard({ ws }: chessBoardProp) {
   const [gameStart, setGameStart] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
-  const [player, setPlayer] = useState<String | null>(null);
+  const [player, setPlayer] = useState<string | null>(null);
   const [width, setWidth] = useState(window.innerWidth / 3);
   const [piecePos, setPiecePos] = useState<piecePosType>({});
   const [draggingPiece, setDraggingPiece] = useState<HTMLElement | null>(null);
@@ -137,6 +137,7 @@ function Chessboard({ ws }: chessBoardProp) {
   const [turn, setTurn] = useState<number>(-1);
   const [yourClock,setYourClock]=useState<number>(0);
   const [othersClock,setOthersClock]=useState<number>(0);
+  let currentPlayer='';
 
   const [pos, setPos] = useState({
     x: 0,
@@ -179,25 +180,23 @@ function Chessboard({ ws }: chessBoardProp) {
 
     ws?.addEventListener('message', (data) => {
       const { event, message } = JSON.parse(data.data);
-
       if (event === 'invalid-roomId') {
         history('/');
       }
 
       if(event==='tick'){
-        console.log(message);
-        const{player,time}=message;
-        if(player===player){
-          setYourClock(time/600);
+        console.log('tick received');
+        if(message.player==currentPlayer){
+          setYourClock(Math.ceil(message.time/100));
         }
         else{
-          setOthersClock(time/600);
+          setOthersClock(Math.ceil(message.time/100));
         }
       }
 
       if (event === 'checkmate') {
         const { boardPos, check, winner } = message;
-        console.log(winner);
+
         setPiecePos({ ...boardPos });
         setCheck({ ...check });
         setGameOver(true);
@@ -206,11 +205,11 @@ function Chessboard({ ws }: chessBoardProp) {
 
       if(event==='time-out'){
         const {player,time,winner}=message;
-        if(player===player){
-          setYourClock(Math.ceil(time/600));
+        if(player===currentPlayer){
+          setYourClock(Math.ceil(time/100));
         }
         else{
-          setOthersClock(Math.ceil(time/600));
+          setOthersClock(Math.ceil(time/100));
         }
         setGameOver(true);
         setResult(winner==='player'?'won':'lost');
@@ -231,12 +230,15 @@ function Chessboard({ ws }: chessBoardProp) {
       }
 
       if (event === 'game-start') {
+        console.log('game-start received');
         setGameStart(true);
         const { player, boardPos } = JSON.parse(message);
-        console.log(player);
         setPiecePos(boardPos);
         setPlayer(player.col);
+        currentPlayer=player.col;
         setTurn(player.turn);
+        setYourClock(Math.ceil(player.time/100));
+        setOthersClock(Math.ceil(player.time/100));
       }
 
     })
@@ -244,10 +246,13 @@ function Chessboard({ ws }: chessBoardProp) {
   }, [ws])
 
 
-
-
-
-
+  useEffect(()=>{
+    if(player && player==='b' && ws){
+      console.log(player);
+      console.log('game-started event sent');
+      ws?.send(JSON.stringify({event:"game-started",message:{}}));
+    }
+  },[ws,player])
 
   //two more things to add ----->
   //pawn promotion
@@ -996,7 +1001,7 @@ function Chessboard({ ws }: chessBoardProp) {
         <moveContext.Provider value={{ draggingPiece, pos, check, width, highlightedTiles, clickedPiece }}>
 
           <div className="absolute top-0 left-0 w-screen h-screen flex justify-center items-center">
-            {othersClock}
+            "other clock "{othersClock}
             <div
               style={{ width: width }}
               className={"board-" + player}
@@ -1007,7 +1012,7 @@ function Chessboard({ ws }: chessBoardProp) {
             >
               {tiles}
             </div>
-            {yourClock}
+            "your clock" {yourClock}
           </div>
 
         </moveContext.Provider>

@@ -48,7 +48,7 @@ function App() {
 
         socket.addEventListener('open',()=>{
           socket.addEventListener('message',(data)=>{
-            console.log(data.data);
+
               const {event,message}=JSON.parse(data.data);
               if(event==='valid-token'){
                 const data={

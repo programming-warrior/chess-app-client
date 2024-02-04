@@ -7,12 +7,12 @@ interface joinPrevGameType {
 
 interface propType {
     ws: WebSocket | null,
-    joinPrevGame: joinPrevGameType | null
+    joinPrevGame: joinPrevGameType | null,
+    token:String|null,
+    username:String|null,
 }
 
-const Home = ({ ws, joinPrevGame }: propType) => {
-    const [token, settoken] = useState<string | null>(null);
-    const [username, setUsername] = useState<string | null>(null);
+const Home = ({ ws, joinPrevGame,username,token }: propType) => {
 
     const [loginRequired, setLoginRequired] = useState<boolean>(false);
 
@@ -31,17 +31,7 @@ const Home = ({ ws, joinPrevGame }: propType) => {
 
     //reading token
     useEffect(() => {
-        const cookieString = document.cookie;
-        const cookies = cookieString.split(';');
-        for (const cookie of cookies) {
-            const [cookieName, cookieValue] = cookie.split(':');
-            if (cookieName === 'token' && cookieValue) {
-                settoken(cookieValue);
-            }
-        }
-
-        const username = localStorage.getItem('username');
-        setUsername(username);
+   
 
         const handleGameType=(e:MouseEvent)=>{
             const target=e.target as HTMLElement;

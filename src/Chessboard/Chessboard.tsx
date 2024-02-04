@@ -4,74 +4,74 @@ import Tile from "../Tile/Tile";
 import { PieceClass } from "../Piece/Piece";
 import { useNavigate, useParams } from "react-router-dom";
 
-// const initialPos: { [key: string]: string } = {
-//   a1: "r-w",
+const initialPos: { [key: string]: string } = {
+  a1: "r-w",
 
 
-//   b1: "kn-w",
-//   c1: "b-w",
-//   d1: "q-w",
-//   e1: "k-w",
-//   f1: "b-w",
-//   g1: "kn-w",
-//   h1: "r-w",
-//   a8: "r-b",
-//   b8: "kn-b",
-//   c8: "b-b",
-//   d8: "q-b",
-//   e8: "k-b",
-//   f8: "b-b",
-//   g8: "kn-b",
-//   h8: "r-b",
-//   a2: "p-w",
-//   b2: "p-w",
-//   c2: "p-w",
-//   d2: "p-w",
-//   e2: "p-w",
-//   f2: "p-w",
-//   g2: "p-w",
-//   h2: "p-w",
-//   a7: "p-b",
-//   b7: "p-b",
-//   c7: "p-b",
-//   d7: "p-b",
-//   e7: "p-b",
-//   f7: "p-b",
-//   g7: "p-b",
-//   h7: "p-b",
-//   a3: "",
-//   b3: "",
-//   c3: "",
-//   d3: "",
-//   e3: "",
-//   f3: "",
-//   g3: "",
-//   h3: "",
-//   a4: "",
-//   b4: "",
-//   c4: "",
-//   d4: "",
-//   e4: "",
-//   f4: "",
-//   g4: "",
-//   h4: "",
-//   a5: "",
-//   b5: "",
-//   c5: "",
-//   d5: "",
-//   e5: "",
-//   f5: "",
-//   g5: "",
-//   h5: "",
-//   a6: "",
-//   b6: "",
-//   c6: "",
-//   d6: "",
-//   e6: "",
-//   f6: "",
-//   g6: "",
-//   h6: "",
-// };
+  b1: "kn-w",
+  c1: "b-w",
+  d1: "q-w",
+  e1: "k-w",
+  f1: "b-w",
+  g1: "kn-w",
+  h1: "r-w",
+  a8: "r-b",
+  b8: "kn-b",
+  c8: "b-b",
+  d8: "q-b",
+  e8: "k-b",
+  f8: "b-b",
+  g8: "kn-b",
+  h8: "r-b",
+  a2: "p-w",
+  b2: "p-w",
+  c2: "p-w",
+  d2: "p-w",
+  e2: "p-w",
+  f2: "p-w",
+  g2: "p-w",
+  h2: "p-w",
+  a7: "p-b",
+  b7: "p-b",
+  c7: "p-b",
+  d7: "p-b",
+  e7: "p-b",
+  f7: "p-b",
+  g7: "p-b",
+  h7: "p-b",
+  a3: "",
+  b3: "",
+  c3: "",
+  d3: "",
+  e3: "",
+  f3: "",
+  g3: "",
+  h3: "",
+  a4: "",
+  b4: "",
+  c4: "",
+  d4: "",
+  e4: "",
+  f4: "",
+  g4: "",
+  h4: "",
+  a5: "",
+  b5: "",
+  c5: "",
+  d5: "",
+  e5: "",
+  f5: "",
+  g5: "",
+  h5: "",
+  a6: "",
+  b6: "",
+  c6: "",
+  d6: "",
+  e6: "",
+  f6: "",
+  g6: "",
+  h6: "",
+};
 
 interface Position {
   x: number;
@@ -121,9 +121,9 @@ interface chessBoardProp {
   ws: WebSocket | null,
 }
 
-interface Clock{
-  min:number,
-  sec:number
+interface Clock {
+  min: number,
+  sec: number
 }
 
 function Chessboard({ ws }: chessBoardProp) {
@@ -138,9 +138,11 @@ function Chessboard({ ws }: chessBoardProp) {
   const [draggingPiece, setDraggingPiece] = useState<HTMLElement | null>(null);
   const [clickedPiece, setClickedPiece] = useState<HTMLElement | null>(null);
   const [highlightedTiles, setHighlightTiles] = useState<String[] | null>(null);
-  const [yourClock,setYourClock]=useState<Clock|null>(null);
-  const [othersClock,setOthersClock]=useState<Clock|null>(null);
-  let you='';
+  const [yourClock, setYourClock] = useState<Clock | null>(null);
+  const [othersClock, setOthersClock] = useState<Clock | null>(null);
+  const [playedMoves,setPlayedMoves]=useState<string[]>([]);
+  let [currentMovePointer, setCurrentMovePointer] = useState<number>(playedMoves.length - 1);
+  let you = '';
 
   const [pos, setPos] = useState({
     x: 0,
@@ -172,7 +174,7 @@ function Chessboard({ ws }: chessBoardProp) {
     })
 
     //send the join-room event to the server
-    if(!player && ws){
+    if (!player && ws) {
       const data = {
         event: 'join-room',
         message: {
@@ -181,110 +183,108 @@ function Chessboard({ ws }: chessBoardProp) {
       }
       ws?.send(JSON.stringify(data));
     }
-  
-    function handleMessageEvent(data:string){
-        const { event, message } = JSON.parse(data);
-        if (event === 'invalid-roomId') {
-          history('/');
+
+    function handleMessageEvent(data: string) {
+      const { event, message } = JSON.parse(data);
+      if (event === 'invalid-roomId') {
+        history('/');
+      }
+
+      if (event === 'tick') {
+        if (you === message.player) {
+          setYourClock({
+            min: Math.floor(message.time / 6000),
+            sec: (Math.floor(message.time / 100)) % 60,
+          });
         }
-  
-        if(event==='tick'){
-          console.log('tick received');
-          console.log(player);
-          console.log(message.player);
-          if(you===message.player){
-            setYourClock({
-              min:Math.floor(message.time/6000),
-              sec:(Math.floor(message.time/100))%60,
-            });
-          }
-          else{
-            setOthersClock({
-              min:Math.floor(message.time/6000),
-              sec:(Math.floor(message.time/100))%60,
-            });
-          }
+        else {
+          setOthersClock({
+            min: Math.floor(message.time / 6000),
+            sec: (Math.floor(message.time / 100)) % 60,
+          });
         }
-  
-        if (event === 'checkmate') {
-          const { boardPos, check, winner } = message;
-          setPiecePos({ ...boardPos });
-          setCheck({ ...check });
-          setGameOver(true);
-          setResult(winner === you ? 'won' : 'lost');
+      }
+
+      if (event === 'checkmate') {
+        const { boardPos, check, winner } = message;
+        setPiecePos({ ...boardPos });
+        setCheck({ ...check });
+        setGameOver(true);
+        setResult(winner === you ? 'won' : 'lost');
+      }
+
+      if (event === 'time-out') {
+        const { player, time, winner } = message;
+        console.log(player);
+        console.log(winner);
+        console.log(you);
+        if (you === player) {
+          setYourClock({
+            min: Math.floor(time / 6000),
+            sec: (Math.floor(time / 100)) % 60,
+          });
         }
-  
-        if(event==='time-out'){
-          const {player,time,winner}=message;
-          if(you===player){
-            setYourClock({
-              min:Math.floor(time/6000),
-              sec:(Math.floor(time/100))%60,
-            });
-          }
-          else{
-            setOthersClock({
-              min:Math.floor(time/6000),
-              sec:(Math.floor(time/100))%60,
-            });
-          }
-          setGameOver(true);
-          setResult(winner===you?'won':'lost');
+        else {
+          setOthersClock({
+            min: Math.floor(time / 6000),
+            sec: (Math.floor(time / 100)) % 60,
+          });
         }
-  
-        if (event === 'move-validated') {
-          const { boardPos, check, currentPlayer } = message;
-          setPiecePos({ ...boardPos });
-          setCheck({ ...check });
-          setClickedPiece(null);
-          setHighlightTiles(null);
+        setGameOver(true);
+        setResult(winner === you ? 'won' : 'lost');
+      }
+
+      if (event === 'move-validated') {
+        const { boardPos, check, currentPlayer,moves } = message;
+        setPiecePos({ ...boardPos });
+        setCheck({ ...check });
+        setClickedPiece(null);
+        setHighlightTiles(null);
+        console.log(playedMoves);
+        setPlayedMoves([...moves]);
+      }
+
+      if (event === 'game-start') {
+        setGameStart(true);
+        const { player, boardPos, clock } = JSON.parse(message);
+        setPiecePos(boardPos);
+        setPlayer(player.col);
+        you = player.col;
+        if (player.col === 'w') {
+          setYourClock({
+            min: Math.floor(clock['w'] / 6000),
+            sec: (Math.floor(clock['w'] / 100)) % 60,
+          });
+          setOthersClock({
+            min: Math.floor(clock['b'] / 6000),
+            sec: (Math.floor(clock['b'] / 100)) % 60,
+          });
         }
-  
-        if (event === 'game-start') {
-          setGameStart(true);
-          const { player, boardPos,clock} = JSON.parse(message);
-          setPiecePos(boardPos);
-          setPlayer(player.col);
-          you=player.col;
-          if(you==='w'){
-            setYourClock({
-              min:Math.floor(clock['w']/6000),
-              sec:(Math.floor(clock['w']/100))%60,
-            });
-            setOthersClock({
-              min:Math.floor(clock['b']/6000),
-              sec:(Math.floor(clock['b']/100))%60,
-            });
-          }
-          else{
-            setYourClock({
-              min:Math.floor(clock['b']/6000),
-              sec:(Math.floor(clock['b']/100))%60,
-            });
-            setOthersClock({
-              min:Math.floor(clock['w']/6000),
-              sec:(Math.floor(clock['w']/100))%60,
-            });
-          }
+        else {
+          setYourClock({
+            min: Math.floor(clock['b'] / 6000),
+            sec: (Math.floor(clock['b'] / 100)) % 60,
+          });
+          setOthersClock({
+            min: Math.floor(clock['w'] / 6000),
+            sec: (Math.floor(clock['w'] / 100)) % 60,
+          });
+          ws?.send(JSON.stringify({ event: "game-started", message: {} }));
 
         }
-  
+
+      }
+
     }
 
-    ws?.addEventListener('message', (data)=>{
+    ws?.addEventListener('message', (data) => {
       handleMessageEvent(data.data);
-    } )
+    })
 
   }, [ws])
 
 
-  useEffect(()=>{
-    if(player && player==='b' && ws){
-      console.log(player);
-      console.log('game-started event sent');
-      ws?.send(JSON.stringify({event:"game-started",message:{}}));
-    }
-  },[ws,player])
+
 
   //two more things to add ----->
   //pawn promotion
@@ -295,6 +295,12 @@ function Chessboard({ ws }: chessBoardProp) {
       ws?.close();
     })
   }, [])
+
+
+  useEffect(()=>{
+    setCurrentMovePointer(playedMoves.length-1);
+    console.log(playedMoves.length-1);
+  },[playedMoves])
 
 
   let file = "abcdefgh".split("");
@@ -1022,7 +1028,37 @@ function Chessboard({ ws }: chessBoardProp) {
   }
 
 
-  if (gameStart) {
+  function showPrevMove() {
+    console.log(playedMoves)
+    console.log(currentMovePointer);
+    if(currentMovePointer>-1){
+      piecePos[playedMoves[currentMovePointer].split('=')[1]] = '';
+      if(currentMovePointer>1){
+        piecePos[playedMoves[currentMovePointer-2].split('=')[1]]=playedMoves[currentMovePointer-2].split('=')[0];
+        setPiecePos({...piecePos});
+      }
+      else if(currentMovePointer===1){
+        piecePos[playedMoves[currentMovePointer-1].split('=')[1]]=playedMoves[currentMovePointer-1].split('=')[0]; 
+        setPiecePos({...piecePos});
+      }
+      else{
+        setPiecePos({...initialPos});
+      }
+      setCurrentMovePointer(currentMovePointer - 1);
+    }
+  }
+
+  function showNextMove() {
+    console.log(playedMoves);
+    console.log(currentMovePointer);
+    if(currentMovePointer<playedMoves.length-1){
+      piecePos[playedMoves[currentMovePointer+1].split('=')[1]]=playedMoves[currentMovePointer+1].split('=')[0];
+      setPiecePos({...piecePos});
+      setCurrentMovePointer(currentMovePointer + 1);
+    }
+  }
+
+  if (gameStart && player) {
     return (
       <>
         <div className={`modal absolute z-10 top-0 left-0 right-0 bottom-0 justify-center items-center w-full h-full ${gameOver ? 'flex' : 'hidden'}`}>
@@ -1033,7 +1069,9 @@ function Chessboard({ ws }: chessBoardProp) {
         <moveContext.Provider value={{ draggingPiece, pos, check, width, highlightedTiles, clickedPiece }}>
 
           <div className="absolute top-0 left-0 w-screen h-screen flex justify-center items-center">
-          <span className="clock">{(othersClock && othersClock?.min<10 )?'0'+othersClock?.min:othersClock?.min}:{othersClock?.sec}</span>
+            {/* <button onClick={showPrevMove} >Prev</button>
+            <button onClick={showNextMove} >Next</button> */}
+            <span className="clock">{(othersClock && othersClock?.min < 10) ? '0' + othersClock?.min : othersClock?.min}:{othersClock?.sec}</span>
             <div
               style={{ width: width }}
               className={"board-" + player}
@@ -1044,7 +1082,7 @@ function Chessboard({ ws }: chessBoardProp) {
             >
               {tiles}
             </div>
-              <span className="clock">{(yourClock && yourClock?.min<10 )?'0'+yourClock?.min:yourClock?.min}:{yourClock?.sec}</span>
+            <span className="clock">{(yourClock && yourClock?.min < 10) ? '0' + yourClock?.min : yourClock?.min}:{yourClock?.sec}</span>
           </div>
 
         </moveContext.Provider>

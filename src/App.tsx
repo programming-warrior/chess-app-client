@@ -5,104 +5,135 @@ import Chessboard from './Chessboard/Chessboard';
 import Home from './Home/Home';
 import Login from "./Login/Login";
 import SignUp from './SignUp/SignUp';
+import Logout from './Logout';
 import EstablishSocketConnection from "./EstablishSocketConnection";
 
 
-interface joinPrevGameType{
-  roomId:string
+interface joinPrevGameType {
+  roomId: string
 }
 
 function App() {
-
   const [ws, setWS] = useState<WebSocket | null>(null);
   const [token, settoken] = useState<string | null>(null);
-  const [username,setUsername]=useState<string|null>(null);
-  const [joinPrevGame,setJoinPrevGame]=useState<joinPrevGameType|null>(null);
+  const [username, setUsername] = useState<string | null>(null);
+  const [joinPrevGame, setJoinPrevGame] = useState<joinPrevGameType | null>(null);
 
-    const getWs=(socket:WebSocket|null,cb:()=>void)=>{
-        setWS(socket);
-        cb();
+  const getWs = (socket: WebSocket | null, cb: () => void) => {
 
-    }
+    setWS(socket);
+    cb();
 
-    useEffect(() => {
-      const cookieString = document.cookie;
-      const cookies = cookieString.split(';');
-      for (const cookie of cookies) {
-          const [cookieName, cookieValue] = cookie.split(':');
-          if (cookieName === 'token' && cookieValue) {
-              settoken(cookieValue);
-          }
-      }
+  }
 
-      const username=localStorage.getItem('username');
-      setUsername(username);
+  const setTokenUsername = (username: string, token: string,cb:()=>void) => {
+    setUsername(username);
+    settoken(token);
+    cb();
+  }
 
-  }, [])
+  const deleteState=(username:string|null,token:string|null,ws:WebSocket|null,cb:()=>void)=>{
+    setUsername(null);
+    settoken(null);
+    setWS(null);
+    cb();
+  }
 
-  useEffect(()=>{
-    if(token && username && !ws){
-      console.log('appp inside the reestablish con');
-        //re-establish a new connection
-        const socket=new WebSocket('ws://localhost:7000');
 
-        socket.addEventListener('open',()=>{
-          socket.addEventListener('message',(data)=>{
 
-              const {event,message}=JSON.parse(data.data);
-              if(event==='valid-token'){
-                const data={
-                  event:'reestablish-connection',
-                  message:{
-                    username,
-                  }
-                }
-                socket.send(JSON.stringify(data));
-                console.log(socket);
-              }
-              
-              if(event==='connection-reestablished'){
-                setWS(socket);
-              }
-              if(event==='join-previous-game'){
-                console.log(message);
-                setWS(socket);
-                const temp={
-                  roomId: message.roomId,
-                }
-                setJoinPrevGame(temp);
-              }
-          })
+
+
+
+  useEffect(() => {
+
+    if (!token && !username) {
+      const refreshToken=localStorage.getItem('refreshToken');
+
+      if(!refreshToken) return;
+      //send the refreshToken and get the accessToken
+      fetch('http://localhost:7000/auth/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body:JSON.stringify({
+          refreshToken,
         })
     
+      }).then((res) => {
+        if (res.status === 201 || res.status === 200) {
+          return res.json();
+        }
+       else{
+        return new Error("no refresh token");
+       }
+      }).then((data) => {
+        const { username, accessToken } = data;
+        document.cookie = `token:${accessToken}`;
+        const socket = new WebSocket('ws://localhost:7000');
+
+        socket.addEventListener('open', () => {
+          document.cookie = "null";
+          socket.addEventListener('message', (data) => {
+
+            const { event, message } = JSON.parse(data.data);
+            if (event === 'valid-token') {
+              const data = {
+                event: 'reestablish-connection',
+                message: {
+                  username,
+                }
+              }
+              socket.send(JSON.stringify(data));
+            }
+
+            if (event === 'connection-reestablished') {
+              setWS(socket);
+              setUsername(username);
+              settoken(accessToken);
+            }
+            if (event === 'join-previous-game') {
+              setWS(socket);
+              setUsername(username);
+              settoken(accessToken);
+              const temp = {
+                roomId: message.roomId,
+              }
+              setJoinPrevGame(temp);
+            }
+          })
+        })
+      }).catch((e) => {
+          console.log(e);
+        })
     }
-  },[token,username])
+  }, [])
 
-    useEffect(()=>{
-      console.log(ws);
+  useEffect(() => {
+    console.log(ws);
+  }, [ws])
 
-    },[ws])
+  useEffect(() => {
+    return (() => {
+      console.log('app closing');
+      ws?.close();
+    })
+  }, [])
 
-    useEffect(()=>{
-      return(()=>{
-        console.log('app closing');
-        ws?.close();
-      })
-    },[])
-
-    return (
-      <div className="App" >
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Home ws={ws} joinPrevGame={joinPrevGame}/>}></Route>
-            <Route path="/login" element={<Login />}></Route>
-            <Route path="/signup" element={<SignUp />}></Route>
-            <Route path="/estbcon" element={<EstablishSocketConnection getWs={getWs}/>}></Route>
-            <Route path="/play/:id" element={<Chessboard ws={ws} />}></Route>
-          </Routes>
-        </BrowserRouter>
-      </div>
-    );
+  return (
+    <div className="App" >
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Home ws={ws} token={token} username={username} joinPrevGame={joinPrevGame} />}></Route>
+          <Route path="/login" element={<Login setTokenUsername={setTokenUsername} />}></Route>
+          <Route path="/signup" element={<SignUp setTokenUsername={setTokenUsername} />}></Route>
+          <Route path="/estbcon" element={<EstablishSocketConnection getWs={getWs} />}></Route>
+          <Route path="/play/:id" element={<Chessboard ws={ws} />}></Route>
+          <Route path="/logout" element={<Logout deleteState={deleteState}/>}></Route>
+        </Routes>
+      </BrowserRouter>
+    </div>
+  );
 
 
 }

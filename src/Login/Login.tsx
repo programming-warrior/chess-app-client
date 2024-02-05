@@ -1,5 +1,6 @@
-import react,{useState,useRef} from "react";
+import react,{useState,useRef,useEffect} from "react";
 import {Link, useNavigate} from 'react-router-dom';
+import BackButton from "../util/BackButton";
 
 interface loginPropType{
     setTokenUsername:(username:string,token:string,cb:()=>void)=>void
@@ -11,6 +12,14 @@ const Login=({setTokenUsername}:loginPropType)=>{
     const [password,setPassword]=useState<string>("");
     const history=useNavigate();
     const errBox=useRef<HTMLDivElement|null>(null);
+
+
+    
+    useEffect(()=>{
+        if(errBox && errBox.current){
+            errBox.current.textContent="";
+        }
+    },[password,username])
 
     const handleUsernameChange=(e:React.ChangeEvent<HTMLInputElement>)=>{
         setUsername(e.target.value);
@@ -68,7 +77,7 @@ const Login=({setTokenUsername}:loginPropType)=>{
                //store the username and the accessToken in a state variable.
                 setTokenUsername(username,accessToken,()=>{
                     //temporarily add the accessToken in the cookie
-                    document.cookie=`token:${accessToken}`;
+                    document.cookie=`token=${accessToken};path=/`;
                     localStorage.setItem('refreshToken',refreshToken);
                     history('/estbcon');
                 });
@@ -82,6 +91,8 @@ const Login=({setTokenUsername}:loginPropType)=>{
     }
     return(
         <div className="px-4 mx-auto max-w-xl my-10 space-y-2">
+            <BackButton/>
+
             <div className="error" ref={errBox}></div>
             <form action="" onSubmit={handleSubmit}>
                 <h1 className="text-black text-3xl font-bold" >Login</h1>

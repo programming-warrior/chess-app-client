@@ -3,7 +3,6 @@
     background-position: center;
     background-size: cover;
     cursor: grab;
-    z-index:50;
 }
 
 .dragging{

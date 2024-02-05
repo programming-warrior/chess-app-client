@@ -1,8 +1,10 @@
-import react, { ChangeEvent, FormEventHandler, useState, useRef } from 'react';
+import react, { ChangeEvent, FormEventHandler, useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useDebounce } from '../util/Debounce';
+import BackButton from '../util/BackButton';
 
 interface signupPropType {
-    setTokenUsername: (username: string, token: string,cb:()=>void) => void
+    setTokenUsername: (username: string, token: string, cb: () => void) => void
 }
 
 
@@ -13,7 +15,59 @@ const SignUp = ({ setTokenUsername }: signupPropType) => {
     const [password, setPassword] = useState<string>("");
     const history = useNavigate();
     const errBox = useRef<HTMLDivElement | null>(null);
-    const [loading,setLoading]=useState<boolean>(false);
+    const usernameStatus = useRef<HTMLDivElement | null>(null);
+    const [valid, setValid] = useState<boolean>(false);
+    const debouncedValue = useDebounce(username);
+
+    const [loading, setLoading] = useState<boolean>(false);
+
+
+    const makeAPIcall = async (payload: string) => {
+        try {
+            const res = await fetch('http://localhost:7000/api/checkUsername', {
+                method: "POST",
+                headers: {
+                    'Content-Type': "application/json",
+                },
+                body: payload
+            })
+
+            const data = await res.json();
+            if (res?.status === 401) {
+                const { status, message } = data;
+                console.log(data);
+                if (usernameStatus && usernameStatus.current) usernameStatus.current.textContent = message;
+                setValid(false);
+                return;
+            }
+
+            if (res?.status === 200) {
+                const { status, message } = data;
+                if (usernameStatus && usernameStatus.current) usernameStatus.current.textContent = message;
+                setValid(true);
+                return;
+            }
+        }
+        catch (e:any) {
+            if(e.name==='TypeError'){
+                if (usernameStatus && usernameStatus.current) usernameStatus.current.textContent = 'no internet';
+            }
+        }
+
+    }
+
+
+
+    useEffect(() => {
+        if (usernameStatus && usernameStatus.current) usernameStatus.current.textContent = ""
+        if (debouncedValue && !loading) makeAPIcall(JSON.stringify({ username: debouncedValue }));
+    }, [debouncedValue])
+
+    useEffect(() => {
+        if (errBox && errBox.current) {
+            errBox.current.textContent = "";
+        }
+    }, [email, password, username])
 
 
     const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -61,20 +115,19 @@ const SignUp = ({ setTokenUsername }: signupPropType) => {
                 return;
             }
 
-            if(errBox && errBox.current){
-                errBox.current.textContent="";
+            if (errBox && errBox.current) {
+                errBox.current.textContent = "";
             }
             const data = await res.json();
             if (data) {
                 const { username, accessToken, refreshToken } = data;
                 //store the username and the accessToken in a state variable.
-                setTokenUsername(username, accessToken,()=>{
-                        //temporarily add the accessToken in the cookie
-                        document.cookie = `token:${accessToken}`;
-                        localStorage.setItem('refreshToken', refreshToken);
-                        history('/estbcon');
+                setTokenUsername(username, accessToken, () => {
+                    //temporarily add the accessToken in the cookie
+                    document.cookie = `token=${accessToken};path=/`;
+                    localStorage.setItem('refreshToken', refreshToken);
+                    history('/estbcon');
                 });
-            
             }
         }
         catch (e) {
@@ -84,6 +137,7 @@ const SignUp = ({ setTokenUsername }: signupPropType) => {
 
     return (
         <div className='px-4 mx-auto max-w-xl my-10 space-y-2'>
+            <BackButton/>
             <div className="error" ref={errBox}></div>
 
             <form action="" className="" onSubmit={handleSubmit}>
@@ -91,6 +145,7 @@ const SignUp = ({ setTokenUsername }: signupPropType) => {
                 <div>
                     <label htmlFor="username">Username</label>
                     <input type="text" name="username" id="username" className="border border-gray-400 block px-4 py-2 w-full rounded focus:outline-none focus:border-teal-500" value={username} onChange={handleUsernameChange} />
+                    <div ref={usernameStatus} className={!valid ? "text-red-600" : "text-green-600"}></div>
                 </div>
                 <div>
                     <label htmlFor="email">Email</label>
@@ -101,7 +156,7 @@ const SignUp = ({ setTokenUsername }: signupPropType) => {
                     <input type="password" name="password" id="password" className="border border-gray-400 block px-4 py-2 w-full rounded focus:outline-none focus:border-teal-500" value={password} onChange={handlePasswordChange} />
                 </div>
                 <div>
-                    <input type="submit" disabled={!(!loading && username.trim().length>0 && password.trim().length>0 && email.trim().length>0)} className={`hover:bg-slate-500 ${!(!loading && username.trim().length>0 && password.trim().length>0 && email.trim().length>0)?'bg-slate-500':'bg-slate-600'}  text-white font-bold py-2 px-4 rounded my-2`}/>
+                    <input type="submit" disabled={!(!loading && username.trim().length > 0 && password.trim().length > 0 && email.trim().length > 0)} className={`hover:bg-slate-500 ${!(!loading && username.trim().length > 0 && password.trim().length > 0 && email.trim().length > 0) ? 'bg-slate-500' : 'bg-slate-600'}  text-white font-bold py-2 px-4 rounded my-2`} />
                 </div>
             </form>
             <p>Already have an account <Link to="/login">Login</Link></p>

@@ -45,11 +45,9 @@ function App() {
 
 
   useEffect(() => {
-
-    if (!token && !username) {
-      const refreshToken=localStorage.getItem('refreshToken');
-
-      if(!refreshToken) return;
+    const refreshToken=localStorage.getItem('refreshToken');
+    if (!token && !username && refreshToken) {
+      console.log('refreshToken '+refreshToken);
       //send the refreshToken and get the accessToken
       fetch('http://localhost:7000/auth/token', {
         method: 'POST',
@@ -69,14 +67,17 @@ function App() {
        }
       }).then((data) => {
         const { username, accessToken } = data;
-        document.cookie = `token:${accessToken}`;
+        document.cookie = `token=${accessToken};path=/`;
+        
         const socket = new WebSocket('ws://localhost:7000');
 
         socket.addEventListener('open', () => {
-          document.cookie = "null";
+          console.log(document.cookie);
+          document.cookie = "token=null;path=/";
           socket.addEventListener('message', (data) => {
 
             const { event, message } = JSON.parse(data.data);
+            console.log(event);
             if (event === 'valid-token') {
               const data = {
                 event: 'reestablish-connection',
@@ -87,12 +88,12 @@ function App() {
               socket.send(JSON.stringify(data));
             }
 
-            if (event === 'connection-reestablished') {
+             if (event === 'connection-reestablished') {
               setWS(socket);
               setUsername(username);
               settoken(accessToken);
             }
-            if (event === 'join-previous-game') {
+             if (event === 'join-previous-game') {
               setWS(socket);
               setUsername(username);
               settoken(accessToken);
@@ -100,6 +101,14 @@ function App() {
                 roomId: message.roomId,
               }
               setJoinPrevGame(temp);
+            }
+            if(event==='connection-forbidden'){
+              localStorage.removeItem('refreshToken');
+              socket.close();
+            }
+            if(event==='invalid-token'){
+              localStorage.removeItem('refreshToken');
+              socket.close();
             }
           })
         })

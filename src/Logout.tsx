@@ -1,6 +1,7 @@
 import React from 'react';
 import {useState,useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
+import WaitingComponent from './util/WaitingComponent';
 
 interface logoutPropType{
     deleteState:(token:string|null,username:string|null,ws:WebSocket|null,cb:()=>void)=>void
@@ -44,7 +45,7 @@ const Logout=({deleteState}:logoutPropType)=>{
         
        <div>
         {
-            loggingOut?"logging out":" "
+            loggingOut?<WaitingComponent/>:" "
         }
        </div>
     );

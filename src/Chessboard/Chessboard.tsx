@@ -129,6 +129,11 @@ interface Clock {
   sec: number
 }
 
+interface Queening {
+  pawn:string,
+  player: string;
+}
+
 function Chessboard({ ws }: chessBoardProp) {
   const history = useNavigate();
   const roomId = useParams().id;
@@ -143,11 +148,14 @@ function Chessboard({ ws }: chessBoardProp) {
   const [highlightedTiles, setHighlightTiles] = useState<String[] | null>(null);
   const [yourClock, setYourClock] = useState<Clock | null>(null);
   const [othersClock, setOthersClock] = useState<Clock | null>(null);
-  const[yourUsername,setYourUsername]=useState<string|null>(null);
-  const[othersUsername,setOthersUsername]=useState<string|null>(null);
+  const [yourUsername, setYourUsername] = useState<string | null>(null);
+  const [othersUsername, setOthersUsername] = useState<string | null>(null);
   const [playedMoves, setPlayedMoves] = useState<string[]>([]);
-  const[popUp,setPopUp]=useState<boolean>(false);
-  let [currentMovePointer, setCurrentMovePointer] = useState<number>(playedMoves.length - 1);
+  const [popUp, setPopUp] = useState<boolean>(false);
+  const [currentMovePointer, setCurrentMovePointer] = useState<number>(playedMoves.length - 1);
+  const [queening, setQueening] = useState<Queening | null>(null);
+  const promotionOptions=useRef<HTMLDivElement|null>(null)
+
   let you = '';
   const [copied, setCopied] = useState<boolean>(false);
 
@@ -247,16 +255,24 @@ function Chessboard({ ws }: chessBoardProp) {
         setPlayedMoves([...moves]);
       }
 
+      if (event === 'queening') {
+        const { col, pawn } = message;
+        setQueening({
+          pawn:pawn,
+          player: col,
+        });
+      }
+
       if (event === 'game-start') {
         setGameStart(true);
-        const { player, boardPos, clock,usernames } = JSON.parse(message);
+        const { player, boardPos, clock, usernames } = JSON.parse(message);
         setPiecePos(boardPos);
         setPlayer(player.col);
         you = player.col;
-        if(player.col==='w'){
+        if (player.col === 'w') {
           setYourUsername(usernames['w']);
           setOthersUsername(usernames['b']);
-        }else{
+        } else {
           setYourUsername(usernames['b']);
           setOthersUsername(usernames['w']);
         }
@@ -301,12 +317,25 @@ function Chessboard({ ws }: chessBoardProp) {
   //en passant
 
 
+  useEffect(() => {
+    if (gameOver) setPopUp(true);
+  }, [gameOver])
+
+
   useEffect(()=>{
-    if(gameOver) setPopUp(true);
-  },[gameOver])
+    if(queening){
+        promotionOptions?.current?.addEventListener('click',(e:MouseEvent)=>{
+          const target=e.target as HTMLDivElement;
+          console.log(target);
+          const promotion=target.dataset.id;
+          console.log(promotion);
+          ws?.send(JSON.stringify({event:"queening-declared",message:{promotion:promotion,player:queening.player,pawn:queening.pawn}}))
+          setQueening(null);
+        })
+      }
 
-
-
+  },[queening]);
+ 
 
 
   let file = "abcdefgh".split("");
@@ -895,14 +924,14 @@ function Chessboard({ ws }: chessBoardProp) {
       if (target.classList.contains('piece') && !gameOver) {
 
         if (target !== clickedPiece && target.dataset.type && player === target.dataset.type.split('-')[1]) {
-    
+
           setClickedPiece(target);
           if (target.dataset.pos && target.dataset.type) {
             showMoves(target.dataset.pos, target.dataset.type);
           }
         }
         else if (clickedPiece && target.dataset.type && target.dataset.type.split('-')[1] !== player) {
-          const squareId = target.dataset.id ? target.dataset.id :target.dataset.pos;
+          const squareId = target.dataset.id ? target.dataset.id : target.dataset.pos;
           //send the piece-move event to the server for validation
           const data = {
             event: "piece-move",
@@ -942,7 +971,6 @@ function Chessboard({ ws }: chessBoardProp) {
 
   function handleMouseUp(e: react.PointerEvent) {
     if (!gameOver && e.pointerType === 'mouse') {
-
 
       if (draggingPiece && chessBoard.current && !gameOver) {
 
@@ -1075,22 +1103,38 @@ function Chessboard({ ws }: chessBoardProp) {
     setCopied(true);
   }
 
+  const queeningStyle:React.CSSProperties={
+    position:"absolute",
+    top:0,
+    left:0,
+    display:"flex",
+    width:"16rem",
+    height:"4rem",
+  }
+
   if (gameStart && player) {
     return (
       <>
         <div className={`modal absolute z-10 top-0 left-0 right-0 bottom-0 justify-center items-center w-full h-full ${popUp ? 'flex' : 'hidden'}`}>
           <div className="absolute rounded flex justify-center items-center  p-4 w-48 h-24 bg-slate-950 z-50">
-          <CancelButton setState={()=>{setPopUp(false)}}/>
+            <CancelButton setState={() => { setPopUp(false) }} />
             <p className="text-white text-lg">{result === 'won' ? 'You won' : 'You lost'}</p>
           </div>
         </div>
-        {gameOver?<BackButton/>:""}
+        <div className={`${!gameOver?'hidden':"block"}`}> <BackButton /> </div>
         <moveContext.Provider value={{ draggingPiece, pos, check, width, highlightedTiles, clickedPiece }}>
 
           <div className="absolute top-0 left-0 w-screen h-screen flex flex-col justify-center items-center">
+
+            <div ref={promotionOptions} className={` ${!queening?"hidden":"flex"} absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-full z-50`} >
+              <div data-id="q" className="focus:ring-2 focus:ring-blue-600"><img data-id="q" draggable="false" src={`/../assets/images/q-${queening?.player}.png`} /></div>
+              <div data-id="r" className="focus:ring-2 focus:ring-blue-600"><img data-id="r" draggable="false" src={`/../assets/images/r-${queening?.player}.png`} /></div>
+              <div data-id="kn"className="focus:ring-2 focus:ring-blue-600"><img data-id="kn" draggable="false" src={`/../assets/images/kn-${queening?.player}.png`} /></div>
+              <div data-id="b" className="focus:ring-2 focus:ring-blue-600"><img data-id="b" draggable="false" src={`/../assets/images/b-${queening?.player}.png`} /></div>
+            </div>
             {/* <button onClick={showPrevMove} >Prev</button>
             <button onClick={showNextMove} >Next</button> */}
-            <div className="flex w-3/4 justify-between items-center">
+            <div className="flex w-1/2 justify-between items-center">
               <span className="font-bold text-lg">{othersUsername}</span>
               <span className="font-bold text-lg">{(othersClock && othersClock?.min < 10) ? '0' + othersClock?.min : othersClock?.min}:{othersClock && othersClock?.sec < 10 ? '0' + othersClock?.sec : othersClock?.sec}</span>
             </div>
@@ -1105,7 +1149,7 @@ function Chessboard({ ws }: chessBoardProp) {
             >
               {tiles}
             </div>
-            <div className="flex w-3/4 justify-between items-center">
+            <div className="flex w-1/2 justify-between items-center">
               <span className="font-bold text-lg">{yourUsername}</span>
               <span className="font-bold text-lg">{(yourClock && yourClock?.min < 10) ? '0' + yourClock?.min : yourClock?.min}:{yourClock && yourClock?.sec < 10 ? '0' + yourClock?.sec : yourClock?.sec}</span>
             </div>

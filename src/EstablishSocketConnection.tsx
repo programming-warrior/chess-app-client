@@ -25,7 +25,7 @@ const EstablishSocketConnection = ({ getWs }: propType) => {
         const { type } = action;
         switch (type) {
             case "connect": {
-                const newSocket = new WebSocket('ws://localhost:7000');
+                const newSocket = new WebSocket(`${process.env.REACT_APP_BACKEND_WS}`);
 
                 newSocket.addEventListener('open', () => {
                     //remove the accessToken from the cookie

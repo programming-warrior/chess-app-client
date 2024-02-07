@@ -14,6 +14,7 @@ interface joinPrevGameType {
 }
 
 function App() {
+
   const [ws, setWS] = useState<WebSocket | null>(null);
   const [token, settoken] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -49,7 +50,7 @@ function App() {
     if (!token && !username && refreshToken) {
       console.log('refreshToken '+refreshToken);
       //send the refreshToken and get the accessToken
-      fetch('http://localhost:7000/auth/token', {
+      fetch(`${process.env.REACT_APP_BACKEND_URL}/auth/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -69,7 +70,7 @@ function App() {
         const { username, accessToken } = data;
         document.cookie = `token=${accessToken};path=/`;
         
-        const socket = new WebSocket('ws://localhost:7000');
+        const socket = new WebSocket(`${process.env.REACT_APP_BACKEND_WS}`);
 
         socket.addEventListener('open', () => {
           console.log(document.cookie);

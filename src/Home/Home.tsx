@@ -14,7 +14,7 @@ interface propType {
 }
 
 const Home = ({ ws, joinPrevGame,username,token }: propType) => {
-
+    const BACKEND_URL=process.env.REACT_APP_BACKEND_URL;
     const [ErrorDisplay, setErrorDisplay] = useState<string|null>(null);
 
     const [popup, setPopUp] = useState<boolean>(false);
@@ -94,7 +94,7 @@ const Home = ({ ws, joinPrevGame,username,token }: propType) => {
     function createNewGame() {
         //if the user is not login, ask if want to play as guest
         //send request to initialize the game 
-        fetch(`http://localhost:7000/initializeRoom?type=${gameType}`, {
+        fetch(`${BACKEND_URL}/initializeRoom?type=${gameType}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }

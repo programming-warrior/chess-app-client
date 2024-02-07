@@ -322,6 +322,7 @@ function Chessboard({ ws }: chessBoardProp) {
   }, [gameOver])
 
 
+
   useEffect(()=>{
     if(queening){
         promotionOptions?.current?.addEventListener('click',(e:MouseEvent)=>{
@@ -1115,16 +1116,16 @@ function Chessboard({ ws }: chessBoardProp) {
   if (gameStart && player) {
     return (
       <>
+        <div className={`${!gameOver?'hidden':"block"} absolute z-50`}> <BackButton /> </div>
         <div className={`modal absolute z-10 top-0 left-0 right-0 bottom-0 justify-center items-center w-full h-full ${popUp ? 'flex' : 'hidden'}`}>
           <div className="absolute rounded flex justify-center items-center  p-4 w-48 h-24 bg-slate-950 z-50">
             <CancelButton setState={() => { setPopUp(false) }} />
             <p className="text-white text-lg">{result === 'won' ? 'You won' : 'You lost'}</p>
           </div>
         </div>
-        <div className={`${!gameOver?'hidden':"block"}`}> <BackButton /> </div>
         <moveContext.Provider value={{ draggingPiece, pos, check, width, highlightedTiles, clickedPiece }}>
 
-          <div className="absolute top-0 left-0 w-screen h-screen flex flex-col justify-center items-center">
+          <div className="absolute -z-1 top-0 left-0 w-screen h-screen flex flex-col justify-center items-center">
 
             <div ref={promotionOptions} className={` ${!queening?"hidden":"flex"} absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-full z-50`} >
               <div data-id="q" className="focus:ring-2 focus:ring-blue-600"><img data-id="q" draggable="false" src={`/../assets/images/q-${queening?.player}.png`} /></div>

@@ -22,7 +22,7 @@ const Logout=({deleteState}:logoutPropType)=>{
     function handleLogout(){
         const refreshToken=localStorage.getItem('refreshToken');
         if(!refreshToken) return;
-        fetch('http://localhost:7000/api/logout',{
+        fetch(`${process.env.REACT_APP_BACKEND_URL}/api/logout`,{
             method:"DELETE",
             headers:{
                 'Content-Type':'application/json',

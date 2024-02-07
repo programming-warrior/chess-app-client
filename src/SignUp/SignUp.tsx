@@ -24,7 +24,7 @@ const SignUp = ({ setTokenUsername }: signupPropType) => {
 
     const makeAPIcall = async (payload: string) => {
         try {
-            const res = await fetch('http://localhost:7000/api/checkUsername', {
+            const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/checkUsername`, {
                 method: "POST",
                 headers: {
                     'Content-Type': "application/json",
@@ -92,7 +92,7 @@ const SignUp = ({ setTokenUsername }: signupPropType) => {
         }
 
         try {
-            const res = await fetch("http://localhost:7000/api/register", {
+            const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': "application/json",

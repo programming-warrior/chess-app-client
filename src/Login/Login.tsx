@@ -76,10 +76,8 @@ const Login=({setTokenUsername}:loginPropType)=>{
                 const {username,accessToken,refreshToken}=data;
                //store the username and the accessToken in a state variable.
                 setTokenUsername(username,accessToken,()=>{
-                    //temporarily add the accessToken in the cookie
-                    document.cookie=`token=${accessToken};path=/`;
                     localStorage.setItem('refreshToken',refreshToken);
-                    history('/estbcon');
+                    history('/estbcon',{state:{accessToken:accessToken}});
                 });
              
             }

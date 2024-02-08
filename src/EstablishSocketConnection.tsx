@@ -1,5 +1,5 @@
 import react, { useReducer, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate,useLocation } from "react-router-dom";
 import WaitingComponent from "./util/WaitingComponent";
 
 interface State {
@@ -15,22 +15,22 @@ interface Action {
 
 interface propType {
     getWs: (socket: WebSocket | null, cb: () => void) => void;
-    deleteState:(token:string|null,username:string|null,ws:WebSocket|null,cb:()=>void)=>void
+    deleteState:(token:string|null,username:string|null,ws:WebSocket|null,cb:()=>void)=>void;
 }
 
 const EstablishSocketConnection = ({ getWs,deleteState }: propType) => {
     const history = useNavigate();
+    const location=useLocation();
     const[redirect,setRedirect]=useState<boolean>(false);
+    const {accessToken}=location.state;
     function reducer(state: State, action: Action) {
         const { type } = action;
         switch (type) {
             case "connect": {
-                console.log(document.cookie);
-                const newSocket = new WebSocket(`${process.env.REACT_APP_BACKEND_WS}`);
+                console.log(accessToken);
+                const newSocket = new WebSocket(`${process.env.REACT_APP_BACKEND_WS}`,['Authorization',`${accessToken}`]);
 
                 newSocket.addEventListener('open', () => {
-                    //remove the accessToken from the cookie
-                    document.cookie="token=null;path=/";
                   
                     newSocket.addEventListener('message', (data) => {
                         const { event, message } = JSON.parse(data.data);

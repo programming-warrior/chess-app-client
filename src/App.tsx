@@ -48,7 +48,6 @@ function App() {
   useEffect(() => {
     const refreshToken=localStorage.getItem('refreshToken');
     if (!token && !username && refreshToken) {
-      console.log('refreshToken '+refreshToken);
       //send the refreshToken and get the accessToken
       fetch(`${process.env.REACT_APP_BACKEND_URL}/auth/token`, {
         method: 'POST',
@@ -68,13 +67,10 @@ function App() {
        }
       }).then((data) => {
         const { username, accessToken } = data;
-        document.cookie = `token=${accessToken};path=/`;
         
-        const socket = new WebSocket(`${process.env.REACT_APP_BACKEND_WS}`);
+        const socket = new WebSocket(`${process.env.REACT_APP_BACKEND_WS}`,['Authorization',`${accessToken}`]);
 
         socket.addEventListener('open', () => {
-          console.log(document.cookie);
-          document.cookie = "token=null;path=/";
           socket.addEventListener('message', (data) => {
 
             const { event, message } = JSON.parse(data.data);

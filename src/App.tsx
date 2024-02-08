@@ -7,7 +7,7 @@ import Login from "./Login/Login";
 import SignUp from './SignUp/SignUp';
 import Logout from './Logout';
 import EstablishSocketConnection from "./EstablishSocketConnection";
-
+import * as Sentry from "@sentry/react";
 
 interface joinPrevGameType {
   roomId: string
@@ -148,4 +148,4 @@ function App() {
 
 }
 
-export default App;
+export default  Sentry.withProfiler(App);;

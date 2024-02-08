@@ -15,16 +15,17 @@ interface Action {
 
 interface propType {
     getWs: (socket: WebSocket | null, cb: () => void) => void;
-
+    deleteState:(token:string|null,username:string|null,ws:WebSocket|null,cb:()=>void)=>void
 }
 
-const EstablishSocketConnection = ({ getWs }: propType) => {
+const EstablishSocketConnection = ({ getWs,deleteState }: propType) => {
     const history = useNavigate();
     const[redirect,setRedirect]=useState<boolean>(false);
     function reducer(state: State, action: Action) {
         const { type } = action;
         switch (type) {
             case "connect": {
+                console.log(document.cookie);
                 const newSocket = new WebSocket(`${process.env.REACT_APP_BACKEND_WS}`);
 
                 newSocket.addEventListener('open', () => {
@@ -77,7 +78,9 @@ const EstablishSocketConnection = ({ getWs }: propType) => {
 
     useEffect(()=>{
         if(redirect && !state.isConnected && !state.socket){
-            history('/');
+            deleteState(null,null,null,()=>{
+                history('/');
+            })
         }
     },[state,redirect])
 

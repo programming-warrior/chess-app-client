@@ -137,7 +137,7 @@ function App() {
           <Route path="/" element={<Home ws={ws} token={token} username={username} joinPrevGame={joinPrevGame} />}></Route>
           <Route path="/login" element={<Login setTokenUsername={setTokenUsername} />}></Route>
           <Route path="/signup" element={<SignUp setTokenUsername={setTokenUsername} />}></Route>
-          <Route path="/estbcon" element={<EstablishSocketConnection getWs={getWs} />}></Route>
+          <Route path="/estbcon" element={<EstablishSocketConnection getWs={getWs} deleteState={deleteState}/>}></Route>
           <Route path="/play/:id" element={<Chessboard ws={ws} />}></Route>
           <Route path="/logout" element={<Logout deleteState={deleteState}/>}></Route>
         </Routes>
